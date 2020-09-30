@@ -6,6 +6,117 @@ import (
 	"os"
 )
 
+// ノードからアセンブリ生成
+func gen(node *Node) {
+	if node.kind == ND_NUM {
+		fmt.Println("  push " + node.val)
+		return
+	}
+
+	gen(node.lhs)
+	gen(node.rhs)
+
+	fmt.Println("  pop rdi")
+	fmt.Println("  pop rax")
+
+	switch node.kind {
+	case ND_ADD:
+		fmt.Println("  add rax, rdi")
+	case ND_SUB:
+		fmt.Println("  sub rax, rdi")
+	case ND_MUL:
+		fmt.Println("  imul rax, rdi")
+	case ND_DIV:
+		fmt.Println("  cqo")
+		fmt.Println("  idiv rdi")
+	}
+
+	fmt.Println("  push rax")
+}
+
+// ノード種類変数
+type NodeKind int
+
+// 抽象木のノード種類
+const (
+	ND_ADD NodeKind = iota // +
+	ND_SUB                 // -
+	ND_MUL                 // *
+	ND_DIV                 // /
+	ND_NUM                 // 整数
+)
+
+// 抽象木の型
+type Node struct {
+	kind NodeKind // ノードの方
+	lhs  *Node    // 左辺
+	rhs  *Node    // 右辺
+	val  string   // せいすうち
+}
+
+// 新しいノードの生成
+func new_node(kind NodeKind, lhs *Node, rhs *Node) *Node {
+	var node *Node
+	node = new(Node)
+	node.kind = kind
+	node.lhs = lhs
+	node.rhs = rhs
+	return node
+}
+
+// せいすうよう
+func new_node_num(val string) *Node {
+	var node *Node
+	node = new(Node)
+	node.kind = ND_NUM
+	node.val = val
+	return node
+}
+
+// 式のノード生成
+func expr() *Node {
+	var node *Node
+	node = mul()
+	for {
+		if consume("+") {
+			node = new_node(ND_ADD, node, mul())
+		} else if consume("-") {
+			node = new_node(ND_SUB, node, mul())
+		} else {
+			return node
+		}
+	}
+}
+
+// 乗算除算のノード生成
+func mul() *Node {
+	var node *Node
+	node = primary()
+	for {
+		if consume("*") {
+			node = new_node(ND_MUL, node, primary())
+		} else if consume("/") {
+			node = new_node(ND_DIV, node, primary())
+		} else {
+			return node
+		}
+	}
+}
+
+// 値等のプライマーのノード生成
+func primary() *Node {
+	// ()について
+	if consume("(") {
+		var node *Node
+		node = expr()
+		expect(")")
+		return node
+	}
+
+	// 数値出す
+	return new_node_num(expect_number())
+}
+
 // トークンの種類用変数
 type TokenKind int
 
@@ -103,8 +214,8 @@ func tokenize(str string) *Token {
 			continue
 		}
 
-		// +/-演算子
-		if str[0] == '+' || str[0] == '-' {
+		// +/-/*/ /演算子
+		if str[0] == '+' || str[0] == '-' || str[0] == '*' || str[0] == '/' || str[0] == '(' || str[0] == ')' {
 			cur = new_token(TK_RESERVED, cur, string(str[0]))
 			str = str[1:]
 			now_loc += 1
@@ -151,27 +262,18 @@ func main() {
 
 	// 実際のとーくないずする
 	token = tokenize(args[0])
+	// ノードの生成
+	var node *Node
+	node = expr()
 
 	// // 実際の処理
 	fmt.Println(".intel_syntax noprefix")
 	fmt.Println(".global main")
 	fmt.Println("main:")
 
-	// 最初の値を置く
-	fmt.Println("  mov rax, " + expect_number())
+	// ノードから汗かく
+	gen(node)
 
-	// その後に+/-があったら動かす
-	for !at_eof() {
-		// +のとき
-		if consume("+") {
-			fmt.Println("  add rax, " + expect_number())
-			continue
-		}
-
-		// -のとき
-		expect("-")
-		fmt.Println("  sub rax, " + expect_number())
-	}
-
+	fmt.Println("  pop rax")
 	fmt.Println("  ret")
 }
