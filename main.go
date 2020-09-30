@@ -27,9 +27,20 @@ type Token struct {
 // 現状のトークン
 var token *Token
 
+// 入力プログラム
+var user_input string
+
+// 現状見ている場所
+var now_loc int
+
 // えらー
 func error(str string) {
-	fmt.Fprintln(os.Stderr, str)
+	tmp := ""
+	for i := 0; i < now_loc; i++ {
+		tmp += " "
+	}
+	fmt.Fprintln(os.Stderr, user_input)
+	fmt.Fprintln(os.Stderr, tmp+"^ "+str)
 	os.Exit(1)
 }
 
@@ -82,10 +93,13 @@ func tokenize(str string) *Token {
 	var head Token
 	head.next = nil
 	cur := &head
+	user_input = str
+	now_loc = 0
 	for len(str) > 0 {
 		// 空白飛ばし
 		if str[0] == ' ' {
 			str = str[1:]
+			now_loc += 1
 			continue
 		}
 
@@ -93,6 +107,7 @@ func tokenize(str string) *Token {
 		if str[0] == '+' || str[0] == '-' {
 			cur = new_token(TK_RESERVED, cur, string(str[0]))
 			str = str[1:]
+			now_loc += 1
 			continue
 		}
 
@@ -116,6 +131,7 @@ func get_number_string(data string) (string, string) {
 		if len(data) != 0 && '0' <= data[0] && data[0] <= '9' {
 			result += string(data[0])
 			data = data[1:]
+			now_loc += 1
 		} else {
 			break
 		}
