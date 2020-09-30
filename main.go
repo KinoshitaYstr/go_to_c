@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os"
 )
@@ -91,16 +90,27 @@ func expr() *Node {
 // 乗算除算のノード生成
 func mul() *Node {
 	var node *Node
-	node = primary()
+	node = unary()
 	for {
 		if consume("*") {
-			node = new_node(ND_MUL, node, primary())
+			node = new_node(ND_MUL, node, unary())
 		} else if consume("/") {
-			node = new_node(ND_DIV, node, primary())
+			node = new_node(ND_DIV, node, unary())
 		} else {
 			return node
 		}
 	}
+}
+
+// 単行+/-のノード生成
+func unary() *Node {
+	if consume("+") {
+		return primary()
+	}
+	if consume("-") {
+		return new_node(ND_SUB, new_node_num("0"), primary())
+	}
+	return primary()
 }
 
 // 値等のプライマーのノード生成
@@ -252,16 +262,16 @@ func get_number_string(data string) (string, string) {
 
 func main() {
 	// コマンドライン引数関係
-	flag.Parse()
-	args := flag.Args()
+	args := os.Args
+
 	// 引数の確認(なかったらエラー)
-	if len(args) != 1 {
+	if len(args) != 2 {
 		fmt.Fprintln(os.Stderr, "引数の個数が正しくありません")
 		return
 	}
 
 	// 実際のとーくないずする
-	token = tokenize(args[0])
+	token = tokenize(args[1])
 	// ノードの生成
 	var node *Node
 	node = expr()
