@@ -52,6 +52,9 @@ func main() {
 		val, arg = GetNumberString(arg)
 		if len(val) != 0 {
 			fmt.Println("  mov rax, " + val)
+		} else {
+			fmt.Fprintln(os.Stderr, "予期しない文字です")
+			return
 		}
 	}
 	fmt.Println("  ret")
