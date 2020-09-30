@@ -6,8 +6,111 @@ import (
 	"os"
 )
 
+// トークンの種類用変数
+type TokenKind int
+
+// 種類の定数
+const (
+	TK_RESERVED TokenKind = iota // 予約時
+	TK_NUM                       // 整数血
+	TK_EOF                       // 入力終了用
+)
+
+// 現状のトークン
+type Token struct {
+	kind TokenKind // トークンの種類
+	next *Token    // 次のトークン
+	val  string    // 値
+	str  string    // 文字
+}
+
+// 現状のトークン
+var token *Token
+
+// えらー
+func error(str string) {
+	fmt.Fprintln(os.Stderr, str)
+	os.Exit(1)
+}
+
+// 次のトークンが予約されているものか確認
+func consume(op string) bool {
+	if token.kind != TK_RESERVED || string(token.str[0]) != op {
+		return false
+	}
+	token = token.next
+	return true
+}
+
+// 演算子確認
+func expect(op string) {
+	if token.kind != TK_RESERVED || string(token.str[0]) != op {
+		error(op + "ではありません")
+	}
+	token = token.next
+}
+
+// 数値確認
+func expect_number() string {
+	if token.kind != TK_NUM {
+		error("数値ではありません")
+		return ""
+	}
+	val := token.val
+	token = token.next
+	return val
+}
+
+// EOF確認
+func at_eof() bool {
+	return token.kind == TK_EOF
+}
+
+// トークン作成とつなげる
+func new_token(kind TokenKind, cur *Token, str string) *Token {
+	var tok *Token
+	tok = new(Token)
+	tok.kind = kind
+	tok.str = str
+	tok.next = nil
+	cur.next = tok
+	return tok
+}
+
+// もじれつpをトーク内図
+func tokenize(str string) *Token {
+	var head Token
+	head.next = nil
+	cur := &head
+	for len(str) > 0 {
+		// 空白飛ばし
+		if str[0] == ' ' {
+			str = str[1:]
+			continue
+		}
+
+		// +/-演算子
+		if str[0] == '+' || str[0] == '-' {
+			cur = new_token(TK_RESERVED, cur, string(str[0]))
+			str = str[1:]
+			continue
+		}
+
+		// 数値処理
+		if '0' <= str[0] && str[0] <= '9' {
+			cur = new_token(TK_NUM, cur, "")
+			cur.val, str = get_number_string(str)
+			continue
+		}
+
+		error("トークナイズできません")
+	}
+	new_token(TK_EOF, cur, str)
+	return head.next
+}
+
 // 文字列からfloat64を取得して、読み取ったものを飛ばして返すもの
-func GetNumberString(data string) (string, string) {
+func get_number_string(data string) (string, string) {
 	result := ""
 	for {
 		if len(data) != 0 && '0' <= data[0] && data[0] <= '9' {
@@ -29,34 +132,30 @@ func main() {
 		fmt.Fprintln(os.Stderr, "引数の個数が正しくありません")
 		return
 	}
-	// 実際の処理
+
+	// 実際のとーくないずする
+	token = tokenize(args[0])
+
+	// // 実際の処理
 	fmt.Println(".intel_syntax noprefix")
 	fmt.Println(".global main")
 	fmt.Println("main:")
-	// 値を取る
-	arg := args[0]
-	var val string
-	for len(arg) > 0 {
-		if arg[0] == '+' {
-			arg = arg[1:]
-			val, arg = GetNumberString(arg)
-			fmt.Println("  add rax, " + val)
+
+	// 最初の値を置く
+	fmt.Println("  mov rax, " + expect_number())
+
+	// その後に+/-があったら動かす
+	for !at_eof() {
+		// +のとき
+		if consume("+") {
+			fmt.Println("  add rax, " + expect_number())
 			continue
 		}
-		if arg[0] == '-' {
-			arg = arg[1:]
-			val, arg = GetNumberString(arg)
-			fmt.Println("  sub rax, " + val)
-			continue
-		}
-		val, arg = GetNumberString(arg)
-		if len(val) != 0 {
-			fmt.Println("  mov rax, " + val)
-		} else {
-			fmt.Fprintln(os.Stderr, "予期しない文字です")
-			return
-		}
+
+		// -のとき
+		expect("-")
+		fmt.Println("  sub rax, " + expect_number())
 	}
+
 	fmt.Println("  ret")
-	return
 }
