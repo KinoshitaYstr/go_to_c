@@ -1,6 +1,6 @@
 GOCMD=go
 GOBUILD=$(GOCMD) build
-TARGET_FILE=main.go
+TARGET_FILE=*.go
 OUTPUT_GO_FILE=main
 
 build:
