@@ -26,4 +26,25 @@ assert 15 "5*(9-6)"
 assert 4 "(3+5)/2"
 assert 10 "-10+20"
 assert 5 "+2+4-1"
+
+assert 1 "1 == 1"
+assert 0 "1 != 1"
+
+assert 0 "2 == 1"
+assert 1 "2 != 1"
+
+assert 1 "1 < 2"
+assert 0 "2 < 1"
+
+assert 1 "1 <= 2"
+assert 1 "1 <= 1"
+assert 0 "2 <= 1"
+
+assert 0 "1 >= 2"
+assert 1 "1 >= 1"
+assert 1 "2 >= 1"
+
+assert 0 "(-1+2*20) >= (2*10/2+10+50)"
+assert 1 "(5*5*2) == (10/2+50-5)"
+
 echo OK

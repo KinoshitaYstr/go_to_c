@@ -28,6 +28,30 @@ func gen(node *Node) {
 	case ND_DIV:
 		fmt.Println("  cqo")
 		fmt.Println("  idiv rdi")
+	case ND_EQU:
+		fmt.Println("  cmp rax, rdi")
+		fmt.Println("  sete al")
+		fmt.Println("  movzb rax, al")
+	case ND_NEQ:
+		fmt.Println("  cmp rax, rdi")
+		fmt.Println("  setne al")
+		fmt.Println("  movzb rax, al")
+	case ND_SML:
+		fmt.Println("  cmp rax, rdi")
+		fmt.Println("  setl al")
+		fmt.Println("  movzb rax, al")
+	case ND_ESM:
+		fmt.Println("  cmp rax, rdi")
+		fmt.Println("  setle al")
+		fmt.Println("  movzb rax, al")
+	case ND_BIG:
+		fmt.Println("  cmp rdi, rax")
+		fmt.Println("  setl al")
+		fmt.Println("  movzb rax, al")
+	case ND_EBG:
+		fmt.Println("  cmp rdi, rax")
+		fmt.Println("  setle al")
+		fmt.Println("  movzb rax, al")
 	}
 
 	fmt.Println("  push rax")
@@ -43,6 +67,12 @@ const (
 	ND_MUL                 // *
 	ND_DIV                 // /
 	ND_NUM                 // 整数
+	ND_EQU                 // ==
+	ND_NEQ                 // !=
+	ND_BIG                 // >
+	ND_SML                 // <
+	ND_EBG                 // >=
+	ND_ESM                 // <=
 )
 
 // 抽象木の型
@@ -74,6 +104,45 @@ func new_node_num(val string) *Node {
 
 // 式のノード生成
 func expr() *Node {
+	return equality()
+}
+
+// 等式のノード生成
+func equality() *Node {
+	var node *Node
+	node = relational()
+	for {
+		if consume("==") {
+			node = new_node(ND_EQU, node, relational())
+		} else if consume("!=") {
+			node = new_node(ND_NEQ, node, relational())
+		} else {
+			return node
+		}
+	}
+}
+
+// 大小関係のノード生成
+func relational() *Node {
+	var node *Node
+	node = add()
+	for {
+		if consume("<") {
+			node = new_node(ND_SML, node, add())
+		} else if consume("<=") {
+			node = new_node(ND_ESM, node, add())
+		} else if consume(">") {
+			node = new_node(ND_BIG, node, add())
+		} else if consume(">=") {
+			node = new_node(ND_EBG, node, add())
+		} else {
+			return node
+		}
+	}
+}
+
+// 加算減算のノード生成
+func add() *Node {
 	var node *Node
 	node = mul()
 	for {
@@ -167,7 +236,7 @@ func error(str string) {
 
 // 次のトークンが予約されているものか確認
 func consume(op string) bool {
-	if token.kind != TK_RESERVED || string(token.str[0]) != op {
+	if token.kind != TK_RESERVED || token.str != op {
 		return false
 	}
 	token = token.next
@@ -224,8 +293,16 @@ func tokenize(str string) *Token {
 			continue
 		}
 
-		// +/-/*/ /演算子
-		if str[0] == '+' || str[0] == '-' || str[0] == '*' || str[0] == '/' || str[0] == '(' || str[0] == ')' {
+		// == / <= / >= 演算子
+		if len(str) >= 2 && (str[:2] == "==" || str[:2] == "!=" || str[:2] == "<=" || str[:2] == ">=") {
+			cur = new_token(TK_RESERVED, cur, str[:2])
+			str = str[2:]
+			now_loc += 2
+			continue
+		}
+
+		// + / - / */ / / () / < / > 演算子
+		if str[0] == '+' || str[0] == '-' || str[0] == '*' || str[0] == '/' || str[0] == '(' || str[0] == ')' || str[0] == '>' || str[0] == '<' {
 			cur = new_token(TK_RESERVED, cur, string(str[0]))
 			str = str[1:]
 			now_loc += 1
