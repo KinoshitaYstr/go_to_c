@@ -15,6 +15,10 @@ func InitLocals() {
 	locals = new(LVar)
 }
 
+func GetLocalSpace() int {
+	return locals.offset
+}
+
 func find_lbar(tok *Token) *LVar {
 	for v := locals; v != nil; v = v.next {
 		if v.name == tok.str {

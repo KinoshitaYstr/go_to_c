@@ -29,7 +29,7 @@ func main() {
 	// 変数用のスペーーす確保
 	fmt.Println("  push rbp")
 	fmt.Println("  mov rbp, rsp")
-	fmt.Println("  sub rsp, 208")
+	fmt.Println("  sub rsp,", GetLocalSpace())
 
 	// ノードの生成とコード書く
 	for _, node := range nodes {
