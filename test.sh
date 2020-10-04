@@ -53,4 +53,9 @@ assert 14 "a = 3; b=5 * 6-8;  a+b/2;"
 assert 1 "aaaa=1;aaaa;"
 assert 14 "abb = 3; aaaa=5 * 6-8;  abb+aaaa/2;"
 
+assert 1 "aaaa=1; return aaaa;"
+assert 14 "abb = 3; aaaa=5 * 6-8;  return abb+aaaa/2;"
+assert 1 "return aaaa=1;aaaa;"
+assert 22 "abb = 3; return aaaa=5 * 6-8;  abb+aaaa/2;"
+
 echo OK

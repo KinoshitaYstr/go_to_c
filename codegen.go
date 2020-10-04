@@ -27,6 +27,14 @@ func Gen(node *Node) {
 		fmt.Println("  mov [rax], rdi")
 		fmt.Println("  push rdi")
 		return
+	case ND_RETURN:
+		Gen(node.lhs)
+
+		fmt.Println("  pop rax")
+		fmt.Println("  mov rsp, rbp")
+		fmt.Println("  pop rbp")
+		fmt.Println("  ret")
+		return
 	}
 
 	Gen(node.lhs)

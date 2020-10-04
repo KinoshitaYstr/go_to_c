@@ -7,6 +7,9 @@ import (
 	"os"
 )
 
+// 現状見ている場所
+var now_loc int
+
 // えらー
 func Error(str string) {
 	tmp := ""

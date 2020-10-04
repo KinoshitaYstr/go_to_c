@@ -46,6 +46,7 @@ const (
 	ND_ESM                    // <=
 	ND_ASSIGN                 // =
 	ND_LVAR                   // ローカル変数
+	ND_RETURN                 // return
 )
 
 // 抽象木の型
@@ -81,7 +82,6 @@ func new_node_local_variance() *Node {
 	var node *Node
 	node = new(Node)
 	node.kind = ND_LVAR
-	// node.offset = int()
 	return node
 }
 
@@ -95,7 +95,13 @@ func Program() []*Node {
 
 func stmt() *Node {
 	var node *Node
-	node = expr()
+	if consume_return() {
+		node = new(Node)
+		node.kind = ND_RETURN
+		node.lhs = expr()
+	} else {
+		node = expr()
+	}
 	expect(";")
 	return node
 }
@@ -233,6 +239,7 @@ const (
 	TK_IDENT                     // 識別子
 	TK_NUM                       // 整数血
 	TK_EOF                       // 入力終了用
+	TK_RETURN                    // return
 )
 
 // 現状のトークン
@@ -249,12 +256,18 @@ var token *Token
 // 入力プログラム
 var user_input string
 
-// 現状見ている場所
-var now_loc int
-
 // 次のトークンが予約されているものか確認
 func consume(op string) bool {
 	if token.kind != TK_RESERVED || token.str != op {
+		return false
+	}
+	token = token.next
+	return true
+}
+
+// returnよう
+func consume_return() bool {
+	if token.kind != TK_RETURN {
 		return false
 	}
 	token = token.next
@@ -322,6 +335,14 @@ func tokenize(str string) *Token {
 			continue
 		}
 
+		// return文
+		if check_key_word("return", str) {
+			cur = new_token(TK_RETURN, cur, "")
+			str = str[6:]
+			now_loc += 6
+			continue
+		}
+
 		// == / <= / >= 演算子
 		if len(str) >= 2 && (str[:2] == "==" || str[:2] == "!=" || str[:2] == "<=" || str[:2] == ">=") {
 			cur = new_token(TK_RESERVED, cur, str[:2])
@@ -373,6 +394,34 @@ func check_alphabet(c uint8) bool {
 		return true
 	}
 	return false
+}
+
+// 数か確認
+func check_num(c uint8) bool {
+	if '0' <= c && c <= '9' {
+		return true
+	}
+	return false
+}
+
+// アンダースコア確認
+func check_under_score(c uint8) bool {
+	if '_' == c {
+		return true
+	}
+	return false
+}
+
+func check_key_word(key string, str string) bool {
+	if len(str) == len(key) {
+		return str == key
+	} else if len(str) < len(key) {
+		return false
+	} else if check_alphabet(str[len(key)]) || check_num(str[len(key)]) || check_under_score(str[len(key)]) {
+		return false
+	} else {
+		return str[0:len(key)] == key
+	}
 }
 
 // 文字列からfloat64を取得して、読み取ったものを飛ばして返すもの
