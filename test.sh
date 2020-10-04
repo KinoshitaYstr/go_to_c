@@ -48,7 +48,9 @@ assert 0 "(-1+2*20) >= (2*10/2+10+50);"
 assert 1 "(5*5*2) == (10/2+50-5);"
 
 assert 1 "a=1;a;"
-
 assert 14 "a = 3; b=5 * 6-8;  a+b/2;"
+
+assert 1 "aaaa=1;aaaa;"
+assert 14 "abb = 3; aaaa=5 * 6-8;  abb+aaaa/2;"
 
 echo OK

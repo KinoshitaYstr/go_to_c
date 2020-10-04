@@ -18,6 +18,7 @@ func main() {
 	// 実際のとーくないずする
 	token = tokenize(args[1])
 
+	InitLocals()
 	nodes := Program()
 
 	// 実際の処理

@@ -2,6 +2,28 @@
 
 package main
 
+type LVar struct {
+	next   *LVar  // 次の変数
+	name   string // 名前
+	offset int    // PBRからのオフセット
+}
+
+// ローカル変数
+var locals *LVar
+
+func InitLocals() {
+	locals = new(LVar)
+}
+
+func find_lbar(tok *Token) *LVar {
+	for v := locals; v != nil; v = v.next {
+		if v.name == tok.str {
+			return v
+		}
+	}
+	return nil
+}
+
 // ノード種類変数
 type NodeKind int
 
@@ -171,12 +193,26 @@ func primary() *Node {
 		node = expr()
 		expect(")")
 		return node
-	} else if token.kind == TK_IDENT {
+	}
+
+	tok := consume_ident()
+	if tok != nil {
 		var node *Node
 		node = new(Node)
 		node.kind = ND_LVAR
-		node.offset = (int(token.str[0]) - 'a' + 1) * 8
-		token = token.next
+
+		lvar := find_lbar(tok)
+		if lvar != nil {
+			node.offset = lvar.offset
+		} else {
+			var lvar *LVar
+			lvar = new(LVar)
+			lvar.next = locals
+			lvar.name = tok.str
+			lvar.offset = locals.offset + 8
+			node.offset = lvar.offset
+			locals = lvar
+		}
 		return node
 	}
 
@@ -219,6 +255,17 @@ func consume(op string) bool {
 	}
 	token = token.next
 	return true
+}
+
+// 変数？
+func consume_ident() *Token {
+	if token.kind == TK_IDENT {
+		var tok *Token
+		tok = token
+		token = token.next
+		return tok
+	}
+	return nil
 }
 
 // 演算子確認
@@ -294,10 +341,19 @@ func tokenize(str string) *Token {
 			continue
 		}
 
-		if 'a' <= str[0] && str[0] <= 'z' {
-			cur = new_token(TK_IDENT, cur, string(str[0]))
-			str = str[1:]
-			now_loc += 1
+		// ローカル変数
+		if check_alphabet(str[0]) {
+			name := ""
+			for len(str) > 0 {
+				if check_alphabet(str[0]) {
+					name += string(str[0])
+					str = str[1:]
+				} else {
+					break
+				}
+			}
+			cur = new_token(TK_IDENT, cur, name)
+			now_loc += len(name)
 			continue
 		}
 
@@ -305,6 +361,14 @@ func tokenize(str string) *Token {
 	}
 	new_token(TK_EOF, cur, str)
 	return head.next
+}
+
+// アルファベット化確認
+func check_alphabet(c uint8) bool {
+	if 'a' <= c && c <= 'z' || 'A' <= c && c <= 'Z' {
+		return true
+	}
+	return false
 }
 
 // 文字列からfloat64を取得して、読み取ったものを飛ばして返すもの
