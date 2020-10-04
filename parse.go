@@ -2,35 +2,33 @@
 
 package main
 
-import (
-	"fmt"
-	"os"
-)
-
 // ノード種類変数
 type NodeKind int
 
 // 抽象木のノード種類
 const (
-	ND_ADD NodeKind = iota // +
-	ND_SUB                 // -
-	ND_MUL                 // *
-	ND_DIV                 // /
-	ND_NUM                 // 整数
-	ND_EQU                 // ==
-	ND_NEQ                 // !=
-	ND_BIG                 // >
-	ND_SML                 // <
-	ND_EBG                 // >=
-	ND_ESM                 // <=
+	ND_ADD    NodeKind = iota // +
+	ND_SUB                    // -
+	ND_MUL                    // *
+	ND_DIV                    // /
+	ND_NUM                    // 整数
+	ND_EQU                    // ==
+	ND_NEQ                    // !=
+	ND_BIG                    // >
+	ND_SML                    // <
+	ND_EBG                    // >=
+	ND_ESM                    // <=
+	ND_ASSIGN                 // =
+	ND_LVAR                   // ローカル変数
 )
 
 // 抽象木の型
 type Node struct {
-	kind NodeKind // ノードの方
-	lhs  *Node    // 左辺
-	rhs  *Node    // 右辺
-	val  string   // せいすうち
+	kind   NodeKind // ノードの方
+	lhs    *Node    // 左辺
+	rhs    *Node    // 右辺
+	val    string   // せいすうち
+	offset int      // ローカル変数のオフセット
 }
 
 // 新しいノードの生成
@@ -52,9 +50,42 @@ func new_node_num(val string) *Node {
 	return node
 }
 
+// ローカル変数よう
+func new_node_local_variance() *Node {
+	var node *Node
+	node = new(Node)
+	node.kind = ND_LVAR
+	// node.offset = int()
+	return node
+}
+
+func Program() []*Node {
+	var node []*Node
+	for !at_eof() {
+		node = append(node, stmt())
+	}
+	return node
+}
+
+func stmt() *Node {
+	var node *Node
+	node = expr()
+	expect(";")
+	return node
+}
+
 // 式のノード生成
-func Expr() *Node {
-	return equality()
+func expr() *Node {
+	return assign()
+}
+
+func assign() *Node {
+	var node *Node
+	node = equality()
+	if consume("=") {
+		node = new_node(ND_ASSIGN, node, assign())
+	}
+	return node
 }
 
 // 等式のノード生成
@@ -137,8 +168,15 @@ func primary() *Node {
 	// ()について
 	if consume("(") {
 		var node *Node
-		node = Expr()
+		node = expr()
 		expect(")")
+		return node
+	} else if token.kind == TK_IDENT {
+		var node *Node
+		node = new(Node)
+		node.kind = ND_LVAR
+		node.offset = (int(token.str[0]) - 'a' + 1) * 8
+		token = token.next
 		return node
 	}
 
@@ -152,6 +190,7 @@ type TokenKind int
 // 種類の定数
 const (
 	TK_RESERVED TokenKind = iota // 予約時
+	TK_IDENT                     // 識別子
 	TK_NUM                       // 整数血
 	TK_EOF                       // 入力終了用
 )
@@ -173,17 +212,6 @@ var user_input string
 // 現状見ている場所
 var now_loc int
 
-// えらー
-func error(str string) {
-	tmp := ""
-	for i := 0; i < now_loc; i++ {
-		tmp += " "
-	}
-	fmt.Fprintln(os.Stderr, user_input)
-	fmt.Fprintln(os.Stderr, tmp+"^ "+str)
-	os.Exit(1)
-}
-
 // 次のトークンが予約されているものか確認
 func consume(op string) bool {
 	if token.kind != TK_RESERVED || token.str != op {
@@ -196,7 +224,7 @@ func consume(op string) bool {
 // 演算子確認
 func expect(op string) {
 	if token.kind != TK_RESERVED || string(token.str[0]) != op {
-		error(op + "ではありません")
+		Error(op + "ではありません")
 	}
 	token = token.next
 }
@@ -204,7 +232,7 @@ func expect(op string) {
 // 数値確認
 func expect_number() string {
 	if token.kind != TK_NUM {
-		error("数値ではありません")
+		Error("数値ではありません")
 		return ""
 	}
 	val := token.val
@@ -252,7 +280,7 @@ func tokenize(str string) *Token {
 		}
 
 		// + / - / */ / / () / < / > 演算子
-		if str[0] == '+' || str[0] == '-' || str[0] == '*' || str[0] == '/' || str[0] == '(' || str[0] == ')' || str[0] == '>' || str[0] == '<' {
+		if str[0] == '+' || str[0] == '-' || str[0] == '*' || str[0] == '/' || str[0] == '(' || str[0] == ')' || str[0] == '>' || str[0] == '<' || str[0] == ';' || str[0] == '=' {
 			cur = new_token(TK_RESERVED, cur, string(str[0]))
 			str = str[1:]
 			now_loc += 1
@@ -266,7 +294,14 @@ func tokenize(str string) *Token {
 			continue
 		}
 
-		error("トークナイズできません")
+		if 'a' <= str[0] && str[0] <= 'z' {
+			cur = new_token(TK_IDENT, cur, string(str[0]))
+			str = str[1:]
+			now_loc += 1
+			continue
+		}
+
+		Error("トークナイズできません")
 	}
 	new_token(TK_EOF, cur, str)
 	return head.next

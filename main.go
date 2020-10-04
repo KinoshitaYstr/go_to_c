@@ -17,18 +17,30 @@ func main() {
 
 	// 実際のとーくないずする
 	token = tokenize(args[1])
-	// ノードの生成
-	var node *Node
-	node = Expr()
 
-	// // 実際の処理
+	nodes := Program()
+
+	// 実際の処理
 	fmt.Println(".intel_syntax noprefix")
 	fmt.Println(".global main")
 	fmt.Println("main:")
 
-	// ノードから汗かく
-	Gen(node)
+	// 変数用のスペーーす確保
+	fmt.Println("  push rbp")
+	fmt.Println("  mov rbp, rsp")
+	fmt.Println("  sub rsp, 208")
 
-	fmt.Println("  pop rax")
+	// ノードの生成とコード書く
+	for _, node := range nodes {
+		if node == nil {
+			fmt.Println("nil !!")
+			continue
+		}
+		Gen(node)
+		fmt.Println("  pop rax")
+	}
+
+	fmt.Println("  mov rsp, rbp")
+	fmt.Println("  pop rbp")
 	fmt.Println("  ret")
 }

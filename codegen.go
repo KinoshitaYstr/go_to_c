@@ -2,12 +2,30 @@
 
 package main
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // ノードからアセンブリ生成
 func Gen(node *Node) {
-	if node.kind == ND_NUM {
+	switch node.kind {
+	case ND_NUM:
 		fmt.Println("  push " + node.val)
+		return
+	case ND_LVAR:
+		gen_lvar(node)
+		fmt.Println("  pop rax")
+		fmt.Println("  mov rax, [rax]")
+		fmt.Println("  push rax")
+		return
+	case ND_ASSIGN:
+		gen_lvar(node.lhs)
+		Gen(node.rhs)
+
+		fmt.Println("  pop rdi")
+		fmt.Println("  pop rax")
+		fmt.Println("  mov [rax], rdi")
+		fmt.Println("  push rdi")
 		return
 	}
 
@@ -53,5 +71,15 @@ func Gen(node *Node) {
 		fmt.Println("  movzb rax, al")
 	}
 
+	fmt.Println("  push rax")
+}
+
+// 左辺値用
+func gen_lvar(node *Node) {
+	if node.kind != ND_LVAR {
+		Error("代入の左辺値が変数ではありません")
+	}
+	fmt.Println("  mov rax, rbp")
+	fmt.Println("  sub rax,", node.offset)
 	fmt.Println("  push rax")
 }
