@@ -95,7 +95,7 @@ func Program() []*Node {
 
 func stmt() *Node {
 	var node *Node
-	if consume_return() {
+	if consume("return") {
 		node = new(Node)
 		node.kind = ND_RETURN
 		node.lhs = expr()
@@ -239,7 +239,6 @@ const (
 	TK_IDENT                     // 識別子
 	TK_NUM                       // 整数血
 	TK_EOF                       // 入力終了用
-	TK_RETURN                    // return
 )
 
 // 現状のトークン
@@ -259,15 +258,6 @@ var user_input string
 // 次のトークンが予約されているものか確認
 func consume(op string) bool {
 	if token.kind != TK_RESERVED || token.str != op {
-		return false
-	}
-	token = token.next
-	return true
-}
-
-// returnよう
-func consume_return() bool {
-	if token.kind != TK_RETURN {
 		return false
 	}
 	token = token.next
@@ -337,7 +327,7 @@ func tokenize(str string) *Token {
 
 		// return文
 		if check_key_word("return", str) {
-			cur = new_token(TK_RETURN, cur, "")
+			cur = new_token(TK_RESERVED, cur, "return")
 			str = str[6:]
 			now_loc += 6
 			continue
