@@ -2,6 +2,65 @@
 
 package main
 
+import "fmt"
+
+type Label struct {
+	if_label    bool
+	else_label  bool
+	while_label bool
+	if_num      int
+	else_num    int
+	while_num   int
+}
+
+func (l *Label) getIf() string {
+	if !l.if_label {
+		l.if_label = true
+		return fmt.Sprintf(".Lif%02d", l.if_num)
+	}
+	return ""
+}
+
+func (l *Label) getElse() string {
+	if !l.else_label {
+		l.else_label = true
+		return fmt.Sprintf(".Lelse%02d", l.else_num)
+	}
+	return ""
+}
+
+func (l *Label) getWhile() string {
+	if !l.while_label {
+		l.while_label = true
+		return fmt.Sprintf(".Lwhile%02d", l.while_num)
+	}
+	return ""
+}
+
+func (l *Label) nextIf() {
+	if l.if_label {
+		l.if_num++
+		l.if_label = false
+	}
+}
+
+func (l *Label) nextElse() {
+	if l.else_label {
+		l.else_num++
+		l.else_label = false
+	}
+}
+
+func (l *Label) nextWhile() {
+	if l.while_label {
+		l.while_num++
+		l.while_label = false
+	}
+}
+
+// ラベル管理
+var labels Label
+
 type LVar struct {
 	next   *LVar  // 次の変数
 	name   string // 名前
@@ -60,6 +119,7 @@ type Node struct {
 	rhs    *Node    // 右辺
 	val    string   // せいすうち
 	offset int      // ローカル変数のオフセット
+	label  string   // ラベル保持
 }
 
 // 新しいノードの生成
@@ -106,12 +166,17 @@ func stmt() *Node {
 	} else if consume("if") {
 		expect("(")
 		node = new(Node)
+		labels.nextIf()
+		node.label = labels.getIf()
 		node.kind = ND_IF
 		node.lhs = expr()
 		expect(")")
 		node.rhs = stmt()
 		if consume("else") {
 			node = new_node(ND_ELSE, node, stmt())
+			labels.nextElse()
+			node.label = labels.getElse()
+			// node.rhs = stmt()
 		}
 		return node
 	} else if consume("while") {
