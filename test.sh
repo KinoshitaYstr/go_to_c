@@ -61,4 +61,16 @@ assert 22 "abb = 3; return aaaa=5 * 6-8;  abb+aaaa/2;"
 assert 12 "a=1; if(a == 1) return 12;"
 assert 0 "a=1; if(a != 1) return 12; return 0;"
 
+assert 12 "a=1; if(a == 1) return 12; else return 0;"
+assert 0 "a=1; if(a != 1) return 12; else return 0;"
+
+assert 10 "a=0; while(a<10) a = a+1; return a;"
+assert 10 "a=0; while(a<100) if(a == 10) return a; else a = a+1;"
+
+assert 10 "for(a=0;a<10;a=a+1) b=10;return a;"
+assert 10 "a=0;for(;a<10;a=a+1) b=10;return a;"
+assert 10 "a=0;for(;a<10;) a=a+1;return a;"
+assert 10 "for(a=0;a<10;) a=a+1;return a;"
+assert 10 "for(a=0;;) if(a<10) a=a+1;else return a;"
+
 echo OK
