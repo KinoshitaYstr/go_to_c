@@ -47,6 +47,10 @@ const (
 	ND_ASSIGN                 // =
 	ND_LVAR                   // ローカル変数
 	ND_RETURN                 // return
+	ND_IF                     // if
+	ND_ELSE                   // else
+	ND_WHILE                  // while
+	ND_FOR                    // for
 )
 
 // 抽象木の型
@@ -99,6 +103,25 @@ func stmt() *Node {
 		node = new(Node)
 		node.kind = ND_RETURN
 		node.lhs = expr()
+	} else if consume("if") {
+		expect("(")
+		node = new(Node)
+		node.kind = ND_IF
+		node.lhs = expr()
+		expect(")")
+		node.rhs = stmt()
+		if consume("else") {
+			node = new_node(ND_ELSE, node, stmt())
+		}
+		return node
+	} else if consume("while") {
+		// expect("(")
+		// node = new(Node)
+		// node.kind = ND_WHILE
+		// node.rhs = expr()
+		// expect("(")
+		// node.lhs = stmt()
+	} else if consume("for") {
 	} else {
 		node = expr()
 	}
@@ -330,6 +353,38 @@ func tokenize(str string) *Token {
 			cur = new_token(TK_RESERVED, cur, "return")
 			str = str[6:]
 			now_loc += 6
+			continue
+		}
+
+		// if文
+		if check_key_word("if", str) {
+			cur = new_token(TK_RESERVED, cur, "if")
+			str = str[2:]
+			now_loc += 2
+			continue
+		}
+
+		// else文
+		if check_key_word("else", str) {
+			cur = new_token(TK_RESERVED, cur, "else")
+			str = str[4:]
+			now_loc += 4
+			continue
+		}
+
+		// while文
+		if check_key_word("while", str) {
+			cur = new_token(TK_RESERVED, cur, "while")
+			str = str[5:]
+			now_loc += 5
+			continue
+		}
+
+		// for文
+		if check_key_word("for", str) {
+			cur = new_token(TK_RESERVED, cur, "for")
+			str = str[3:]
+			now_loc += 3
 			continue
 		}
 

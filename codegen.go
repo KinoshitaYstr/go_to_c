@@ -35,6 +35,20 @@ func Gen(node *Node) {
 		fmt.Println("  pop rbp")
 		fmt.Println("  ret")
 		return
+	case ND_IF:
+		Gen(node.lhs)
+
+		fmt.Println("  pop rax")
+		fmt.Println("  cmp rax, 0")
+		fmt.Println("  je .Lend00")
+		Gen(node.rhs)
+		fmt.Println(".Lend00:")
+
+		return
+	case ND_ELSE:
+		fmt.Println("  pop rax")
+
+		return
 	}
 
 	Gen(node.lhs)

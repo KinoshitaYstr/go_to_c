@@ -5,7 +5,7 @@ assert() {
     input="$2"
 
     ./main "$input" > tmp.s
-    gcc -o tmp tmp.s
+    gcc -static -o tmp tmp.s
     ./tmp
     actual="$?"
 
@@ -57,5 +57,8 @@ assert 1 "aaaa=1; return aaaa;"
 assert 14 "abb = 3; aaaa=5 * 6-8;  return abb+aaaa/2;"
 assert 1 "return aaaa=1;aaaa;"
 assert 22 "abb = 3; return aaaa=5 * 6-8;  abb+aaaa/2;"
+
+assert 12 "a=1; if(a == 1) return 12;"
+assert 0 "a=1; if(a != 1) return 12; return 0;"
 
 echo OK

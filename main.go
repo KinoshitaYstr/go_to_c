@@ -19,6 +19,7 @@ func main() {
 	token = tokenize(args[1])
 
 	InitLocals()
+	// Program()
 	nodes := Program()
 
 	// 実際の処理
