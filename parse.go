@@ -176,16 +176,18 @@ func stmt() *Node {
 			node = new_node(ND_ELSE, node, stmt())
 			labels.nextElse()
 			node.label = labels.getElse()
-			// node.rhs = stmt()
 		}
 		return node
 	} else if consume("while") {
-		// expect("(")
-		// node = new(Node)
-		// node.kind = ND_WHILE
-		// node.rhs = expr()
-		// expect("(")
-		// node.lhs = stmt()
+		expect("(")
+		node = new(Node)
+		node.kind = ND_WHILE
+		labels.nextWhile()
+		node.label = labels.getWhile()
+		node.lhs = expr()
+		expect(")")
+		node.rhs = stmt()
+		return node
 	} else if consume("for") {
 	} else {
 		node = expr()

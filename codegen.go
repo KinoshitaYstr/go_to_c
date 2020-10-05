@@ -54,6 +54,17 @@ func Gen(node *Node) {
 		Gen(node.rhs)
 		fmt.Println(node.lhs.label + ":")
 		return
+	case ND_WHILE:
+		fmt.Println(node.label + "begin:")
+		Gen(node.lhs)
+		fmt.Println("  pop rax")
+		fmt.Println("  cmp rax, 0")
+		fmt.Println("  je " + node.label + "end")
+		Gen(node.rhs)
+		fmt.Println("  jmp " + node.label + "begin")
+		fmt.Println(node.label + "end:")
+
+		return
 	}
 
 	Gen(node.lhs)
