@@ -8,9 +8,11 @@ type Label struct {
 	if_label    bool
 	else_label  bool
 	while_label bool
+	for_label   bool
 	if_num      int
 	else_num    int
 	while_num   int
+	for_num     int
 }
 
 func (l *Label) getIf() string {
@@ -37,6 +39,14 @@ func (l *Label) getWhile() string {
 	return ""
 }
 
+func (l *Label) getFor() string {
+	if !l.while_label {
+		l.for_label = true
+		return fmt.Sprintf(".Lfor%02d", l.for_num)
+	}
+	return ""
+}
+
 func (l *Label) nextIf() {
 	if l.if_label {
 		l.if_num++
@@ -55,6 +65,13 @@ func (l *Label) nextWhile() {
 	if l.while_label {
 		l.while_num++
 		l.while_label = false
+	}
+}
+
+func (l *Label) nextFor() {
+	if l.for_label {
+		l.for_num++
+		l.for_label = false
 	}
 }
 
@@ -189,6 +206,27 @@ func stmt() *Node {
 		node.rhs = stmt()
 		return node
 	} else if consume("for") {
+		expect("(")
+		node = new(Node)
+		node.kind = ND_FOR
+		labels.nextFor()
+		node.label = labels.getFor()
+		node.lhs = new(Node)
+		node.rhs = new(Node)
+		if !at_op(";") {
+			node.lhs.lhs = expr()
+		}
+		expect(";")
+		if !at_op(";") {
+			node.lhs.rhs = expr()
+		}
+		expect(";")
+		if !at_op(")") {
+			node.rhs.lhs = expr()
+		}
+		expect(")")
+		node.rhs.rhs = stmt()
+		return node
 	} else {
 		node = expr()
 	}
@@ -382,6 +420,10 @@ func expect_number() string {
 	val := token.val
 	token = token.next
 	return val
+}
+
+func at_op(op string) bool {
+	return token.str == op
 }
 
 // EOF確認
