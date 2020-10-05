@@ -73,4 +73,6 @@ assert 10 "a=0;for(;a<10;) a=a+1;return a;"
 assert 10 "for(a=0;a<10;) a=a+1;return a;"
 assert 10 "for(a=0;;) if(a<10) a=a+1;else return a;"
 
+assert 111 "{a=0;a=a+1;a=a+10;a=a+100;return a;}"
+
 echo OK

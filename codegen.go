@@ -82,6 +82,10 @@ func Gen(node *Node) {
 		fmt.Println("  jmp " + node.label + "begin")
 		fmt.Println(node.label + "end:")
 		return
+	case ND_BLOCK:
+		Gen(node.lhs)
+		Gen(node.rhs)
+		return
 	}
 
 	Gen(node.lhs)

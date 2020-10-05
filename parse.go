@@ -127,6 +127,7 @@ const (
 	ND_ELSE                   // else
 	ND_WHILE                  // while
 	ND_FOR                    // for
+	ND_BLOCK                  // block
 )
 
 // 抽象木の型
@@ -176,7 +177,17 @@ func Program() []*Node {
 
 func stmt() *Node {
 	var node *Node
-	if consume("return") {
+	if consume("{") {
+		if consume("}") {
+			return nil
+		}
+		node = stmt()
+		for !at_op("}") {
+			node = new_node(ND_BLOCK, node, stmt())
+		}
+		expect("}")
+		return node
+	} else if consume("return") {
 		node = new(Node)
 		node.kind = ND_RETURN
 		node.lhs = expr()
@@ -506,7 +517,7 @@ func tokenize(str string) *Token {
 		}
 
 		// + / - / */ / / () / < / > 演算子
-		if str[0] == '+' || str[0] == '-' || str[0] == '*' || str[0] == '/' || str[0] == '(' || str[0] == ')' || str[0] == '>' || str[0] == '<' || str[0] == ';' || str[0] == '=' {
+		if str[0] == '+' || str[0] == '-' || str[0] == '*' || str[0] == '/' || str[0] == '(' || str[0] == ')' || str[0] == '>' || str[0] == '<' || str[0] == ';' || str[0] == '=' || str[0] == '{' || str[0] == '}' {
 			cur = new_token(TK_RESERVED, cur, string(str[0]))
 			str = str[1:]
 			now_loc += 1
