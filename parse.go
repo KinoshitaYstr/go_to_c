@@ -128,6 +128,9 @@ const (
 	ND_WHILE                  // while
 	ND_FOR                    // for
 	ND_BLOCK                  // block
+	ND_FUNC                   // 関数
+	ND_ARG                    // 引数
+	ND_NONE                   // none
 )
 
 // 抽象木の型
@@ -159,6 +162,13 @@ func new_node_num(val string) *Node {
 	return node
 }
 
+func new_node_none() *Node {
+	var node *Node
+	node = new(Node)
+	node.kind = ND_NONE
+	return node
+}
+
 // ローカル変数よう
 func new_node_local_variance() *Node {
 	var node *Node
@@ -182,10 +192,10 @@ func stmt() *Node {
 			return nil
 		}
 		node = stmt()
-		for !at_op("}") {
+		for !consume("}") {
 			node = new_node(ND_BLOCK, node, stmt())
+			// expect("}")
 		}
-		expect("}")
 		return node
 	} else if consume("return") {
 		node = new(Node)
@@ -224,18 +234,24 @@ func stmt() *Node {
 		node.label = labels.getFor()
 		node.lhs = new(Node)
 		node.rhs = new(Node)
-		if !at_op(";") {
+		if !consume(";") {
 			node.lhs.lhs = expr()
+			expect(";")
+		} else {
+			node.lhs.lhs = new_node_none()
 		}
-		expect(";")
-		if !at_op(";") {
+		if !consume(";") {
 			node.lhs.rhs = expr()
+			expect(";")
+		} else {
+			node.lhs.rhs = new_node_none()
 		}
-		expect(";")
-		if !at_op(")") {
+		if !consume(")") {
 			node.rhs.lhs = expr()
+			expect(")")
+		} else {
+			node.rhs.lhs = new_node_none()
 		}
-		expect(")")
 		node.rhs.rhs = stmt()
 		return node
 	} else {
@@ -348,6 +364,23 @@ func primary() *Node {
 	if tok != nil {
 		var node *Node
 		node = new(Node)
+		if consume("(") {
+			// 関数
+			node.kind = ND_FUNC
+			if !consume(")") {
+				argNode := expr()
+				argNode.kind = ND_ARG
+				if consume(",") {
+					argNode = new_node(ND_ARG, argNode, expr())
+				}
+				expect(")")
+				node.lhs = argNode
+			} else {
+				node.lhs = new_node_none()
+			}
+			node.rhs = stmt()
+			return node
+		}
 		node.kind = ND_LVAR
 
 		lvar := find_lbar(tok)
@@ -362,6 +395,13 @@ func primary() *Node {
 			node.offset = lvar.offset
 			locals = lvar
 		}
+		return node
+	}
+
+	if consume_none() {
+		var node *Node
+		node = new(Node)
+		node.kind = ND_NONE
 		return node
 	}
 
@@ -414,6 +454,14 @@ func consume_ident() *Token {
 	return nil
 }
 
+func consume_none() bool {
+	if token != nil {
+		return false
+	}
+	token = token.next
+	return true
+}
+
 // 演算子確認
 func expect(op string) {
 	if token.kind != TK_RESERVED || string(token.str[0]) != op {
@@ -431,10 +479,6 @@ func expect_number() string {
 	val := token.val
 	token = token.next
 	return val
-}
-
-func at_op(op string) bool {
-	return token.str == op
 }
 
 // EOF確認
@@ -517,7 +561,7 @@ func tokenize(str string) *Token {
 		}
 
 		// + / - / */ / / () / < / > 演算子
-		if str[0] == '+' || str[0] == '-' || str[0] == '*' || str[0] == '/' || str[0] == '(' || str[0] == ')' || str[0] == '>' || str[0] == '<' || str[0] == ';' || str[0] == '=' || str[0] == '{' || str[0] == '}' {
+		if str[0] == '+' || str[0] == '-' || str[0] == '*' || str[0] == '/' || str[0] == '(' || str[0] == ')' || str[0] == '>' || str[0] == '<' || str[0] == ';' || str[0] == '=' || str[0] == '{' || str[0] == '}' || str[0] == ',' {
 			cur = new_token(TK_RESERVED, cur, string(str[0]))
 			str = str[1:]
 			now_loc += 1

@@ -8,10 +8,9 @@ import (
 
 // ノードからアセンブリ生成
 func Gen(node *Node) {
-	if node == nil {
-		return
-	}
 	switch node.kind {
+	case ND_NONE:
+		return
 	case ND_NUM:
 		fmt.Println("  push " + node.val)
 		return
@@ -72,7 +71,7 @@ func Gen(node *Node) {
 		Gen(node.lhs.lhs)
 		fmt.Println(node.label + "begin:")
 		Gen(node.lhs.rhs)
-		if node.lhs.rhs != nil {
+		if node.lhs.rhs.kind != ND_NONE {
 			fmt.Println("  pop rax")
 			fmt.Println("  cmp rax, 0")
 			fmt.Println("  je " + node.label + "end")
@@ -85,6 +84,12 @@ func Gen(node *Node) {
 	case ND_BLOCK:
 		Gen(node.lhs)
 		Gen(node.rhs)
+		return
+	case ND_FUNC:
+
+		return
+	case ND_ARG:
+
 		return
 	}
 

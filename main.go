@@ -35,7 +35,6 @@ func main() {
 	// ノードの生成とコード書く
 	for _, node := range nodes {
 		if node == nil {
-			fmt.Println("nil !!")
 			continue
 		}
 		Gen(node)
