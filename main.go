@@ -22,15 +22,15 @@ func main() {
 	// Program()
 	nodes := Program()
 
-	// 実際の処理
-	fmt.Println(".intel_syntax noprefix")
-	fmt.Println(".global main")
-	fmt.Println("main:")
+	// // 実際の処理
+	// fmt.Println(".intel_syntax noprefix")
+	// fmt.Println(".global main")
+	// fmt.Println("main:")
 
-	// 変数用のスペーーす確保
-	fmt.Println("  push rbp")
-	fmt.Println("  mov rbp, rsp")
-	fmt.Println("  sub rsp,", GetLocalSpace())
+	// // 変数用のスペーーす確保
+	// fmt.Println("  push rbp")
+	// fmt.Println("  mov rbp, rsp")
+	// fmt.Println("  sub rsp,", GetLocalSpace())
 
 	// ノードの生成とコード書く
 	for _, node := range nodes {

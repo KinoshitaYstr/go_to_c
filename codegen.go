@@ -86,10 +86,24 @@ func Gen(node *Node) {
 		Gen(node.rhs)
 		return
 	case ND_FUNC:
+		fmt.Println("=====================")
+		if node.lhs != nil {
+			Gen(node.lhs)
+		}
+		fmt.Println(node.val + ":")
 
+		fmt.Println("  nop")
+		fmt.Println("  leave")
+		fmt.Println("  ret")
 		return
 	case ND_ARG:
-
+		if node.lhs != nil {
+			Gen(node.lhs)
+		}
+		if node.rhs != nil {
+			Gen(node.rhs)
+		}
+		fmt.Println(node)
 		return
 	}
 

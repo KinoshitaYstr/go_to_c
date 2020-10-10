@@ -15,6 +15,9 @@ type Label struct {
 	for_num     int
 }
 
+// 引数の数
+var argCount int
+
 func (l *Label) getIf() string {
 	if !l.if_label {
 		l.if_label = true
@@ -191,9 +194,16 @@ func stmt() *Node {
 		if consume("}") {
 			return nil
 		}
+		fmt.Println("1start stmt")
+		fmt.Println(token)
 		node = stmt()
+		fmt.Println("1finish stmt")
+		fmt.Println(token)
 		for !consume("}") {
+			fmt.Println("2start stmt")
+			fmt.Println(token)
 			node = new_node(ND_BLOCK, node, stmt())
+			fmt.Println("2finish stmt")
 			// expect("}")
 		}
 		return node
@@ -201,6 +211,9 @@ func stmt() *Node {
 		node = new(Node)
 		node.kind = ND_RETURN
 		node.lhs = expr()
+		fmt.Println(" -> 1;")
+		expect(";")
+		return node
 	} else if consume("if") {
 		expect("(")
 		node = new(Node)
@@ -234,14 +247,18 @@ func stmt() *Node {
 		node.label = labels.getFor()
 		node.lhs = new(Node)
 		node.rhs = new(Node)
+		fmt.Println(" -> 2;")
 		if !consume(";") {
 			node.lhs.lhs = expr()
+			fmt.Println(" -> 3;")
 			expect(";")
 		} else {
 			node.lhs.lhs = new_node_none()
 		}
+		fmt.Println(" -> 4;")
 		if !consume(";") {
 			node.lhs.rhs = expr()
+			fmt.Println(" -> 5;")
 			expect(";")
 		} else {
 			node.lhs.rhs = new_node_none()
@@ -256,8 +273,9 @@ func stmt() *Node {
 		return node
 	} else {
 		node = expr()
+		fmt.Println(" -> 6;")
+		expect(";")
 	}
-	expect(";")
 	return node
 }
 
@@ -361,23 +379,39 @@ func primary() *Node {
 	}
 
 	tok := consume_ident()
+	var node *Node
+	node = new(Node)
 	if tok != nil {
-		var node *Node
-		node = new(Node)
+		// 関数
 		if consume("(") {
-			// 関数
 			node.kind = ND_FUNC
-			if !consume(")") {
-				argNode := expr()
-				argNode.kind = ND_ARG
-				if consume(",") {
-					argNode = new_node(ND_ARG, argNode, expr())
-				}
-				expect(")")
-				node.lhs = argNode
-			} else {
-				node.lhs = new_node_none()
-			}
+			node.val = tok.str
+			// fmt.Println(node)
+			// if !consume(")") {
+			// 	argNode := expr()
+			// 	argNode.kind = ND_ARG
+			// 	argCount = 1
+			// 	if consume(",") {
+			// 		argNode = new_node(ND_ARG, argNode, expr())
+			// 		argCount++
+			// 	} else {
+			// 		expect(")")
+			// 		node.lhs = argNode
+			// 		node.offset = argCount
+			// 	}
+			// } else {
+			// 	node.lhs = new_node_none()
+			// 	node.offset = 1
+			// }
+			// fmt.Println("1111111111111111111111111")
+			// fmt.Println(node)
+			// fmt.Println("1111111111111111111111111")
+			// node.rhs = stmt()
+			// fmt.Println(ND_FUNC)
+			// fmt.Println(node.kind)
+			expect(")")
+			// fmt.Println("gooo")
+			fmt.Println("go func stmt")
 			node.rhs = stmt()
 			return node
 		}
