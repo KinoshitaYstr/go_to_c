@@ -1,5 +1,6 @@
 ### go de c compiler tsukutte miru zo !!
 * https://www.sigbus.info/compilerbook
+* https://godbolt.org/
 
 ## BNF
 * program = stmt*

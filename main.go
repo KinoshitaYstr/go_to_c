@@ -6,42 +6,28 @@ import (
 )
 
 func main() {
-	// コマンドライン引数関係
+	// コマンドライン
 	args := os.Args
 
-	// 引数の確認(なかったらエラー)
+	// 引数確認
 	if len(args) != 2 {
 		fmt.Fprintln(os.Stderr, "引数の個数が正しくありません")
 		return
 	}
 
-	// 実際のとーくないずする
-	token = tokenize(args[1])
+	tokens := tokenize(args[1])
+	fmt.Println(tokens)
 
-	InitLocals()
-	// Program()
-	nodes := Program()
+	nodes := tokens.program()
+	fmt.Println(len(nodes))
+	fmt.Println(nodes)
 
-	// // 実際の処理
-	// fmt.Println(".intel_syntax noprefix")
-	// fmt.Println(".global main")
-	// fmt.Println("main:")
+	fmt.Println(".intel_syntax noprefix")
+	fmt.Println(".global main")
+	fmt.Println(".main")
 
-	// // 変数用のスペーーす確保
-	// fmt.Println("  push rbp")
-	// fmt.Println("  mov rbp, rsp")
-	// fmt.Println("  sub rsp,", GetLocalSpace())
-
-	// ノードの生成とコード書く
-	for _, node := range nodes {
-		if node == nil {
-			continue
-		}
-		Gen(node)
-		fmt.Println("  pop rax")
-	}
-
-	fmt.Println("  mov rsp, rbp")
-	fmt.Println("  pop rbp")
-	fmt.Println("  ret")
+	fmt.Println("  push rbp")
+	fmt.Println("  mov rbp, rsp")
+	fmt.Println("  sub rbp, " + string(locals.offset))
+	nodes[0].gen()
 }

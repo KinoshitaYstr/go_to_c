@@ -1,683 +1,642 @@
-// ぱーーさ
-
 package main
 
 import "fmt"
 
-type Label struct {
-	if_label    bool
-	else_label  bool
-	while_label bool
-	for_label   bool
-	if_num      int
-	else_num    int
-	while_num   int
-	for_num     int
+var labels label
+var locals *variance
+
+func (t *token) program() []*node {
+	fmt.Println(t)
+	fmt.Println(t.consume("{"))
+	fmt.Println(t)
+	var n []*node
+	locals.init()
+	// fmt.Println(t.stmt())
+	// for t.atEOF() {
+	// 	n = append(n, t.stmt())
+	// }
+	fmt.Println(n)
+	return n
 }
 
-// 引数の数
-var argCount int
-
-func (l *Label) getIf() string {
-	if !l.if_label {
-		l.if_label = true
-		return fmt.Sprintf(".Lif%02d", l.if_num)
+func (t *token) stmt() *node {
+	// fmt.Println(t)
+	var n *node
+	if t.consume("{") {
+		if t.consume("}") {
+			return newNodeNone()
+		}
+		n = t.stmt()
+		for !t.consume("}") {
+			n.updateNode(ndBlk, n, t.stmt())
+		}
+		return n
+	} else if t.consume("return") {
+		n = new(node)
+		n.kind = ndRtn
+		n.lhs = t.expr()
+		t.expect(";")
+		return n
+	} else if t.consume("if") {
+		t.expect("(")
+		labels.nextIf()
+		n = new(node)
+		n.kind = ndIf
+		n.label = labels.getIf()
+		n.lhs = t.expr()
+		t.expect(")")
+		n.rhs = t.stmt()
+		if t.consume("else") {
+			labels.nextElse()
+			n.updateNode(ndElse, n, t.stmt())
+			n.label = labels.getElse()
+		}
+		return n
+	} else if t.consume("while") {
+		t.expect("(")
+		labels.nextWhile()
+		n = new(node)
+		n.kind = ndWhile
+		n.label = labels.getWhile()
+		n.lhs = t.expr()
+		t.expect(")")
+		n.rhs = t.stmt()
+		return n
+	} else if t.consume("for") {
+		t.expect("(")
+		labels.nextFor()
+		n = new(node)
+		n.kind = ndFor
+		n.label = labels.getFor()
+		n.lhs = new(node)
+		n.rhs = new(node)
+		if t.consume(";") {
+			n.lhs.lhs = newNodeNone()
+		} else {
+			n.lhs.lhs = t.expr()
+			t.expect(";")
+		}
+		if t.consume(";") {
+			n.lhs.rhs = newNodeNone()
+		} else {
+			n.lhs.rhs = t.expr()
+			t.expect(";")
+		}
+		if t.consume(")") {
+			n.rhs.lhs = newNodeNone()
+		} else {
+			n.rhs.lhs = t.expr()
+			t.expect(")")
+		}
+		n.rhs.rhs = t.stmt()
+		return n
+	} else {
+		n = t.expr()
+		t.expect(";")
+		return n
 	}
-	return ""
 }
 
-func (l *Label) getElse() string {
-	if !l.else_label {
-		l.else_label = true
-		return fmt.Sprintf(".Lelse%02d", l.else_num)
+func (t *token) expr() *node {
+	// fmt.Println(t)
+	return t.assign()
+}
+
+func (t *token) assign() *node {
+	// fmt.Println(t)
+	var n *node
+	n = t.equality()
+	if t.consume("=") {
+		n.updateNode(ndAssign, n, t.assign())
 	}
-	return ""
+	return n
 }
 
-func (l *Label) getWhile() string {
-	if !l.while_label {
-		l.while_label = true
-		return fmt.Sprintf(".Lwhile%02d", l.while_num)
-	}
-	return ""
-}
-
-func (l *Label) getFor() string {
-	if !l.while_label {
-		l.for_label = true
-		return fmt.Sprintf(".Lfor%02d", l.for_num)
-	}
-	return ""
-}
-
-func (l *Label) nextIf() {
-	if l.if_label {
-		l.if_num++
-		l.if_label = false
+func (t *token) equality() *node {
+	// fmt.Println(t)
+	var n *node
+	n = t.relational()
+	for {
+		if t.consume("==") {
+			n.updateNode(ndEqu, n, t.relational())
+		} else if t.consume("!=") {
+			n.updateNode(ndNeq, n, t.relational())
+		} else {
+			return n
+		}
 	}
 }
 
-func (l *Label) nextElse() {
-	if l.else_label {
-		l.else_num++
-		l.else_label = false
+func (t *token) relational() *node {
+	// fmt.Println(t)
+	var n *node
+	n = t.add()
+	for {
+		if t.consume("<") {
+			n.updateNode(ndSml, n, t.add())
+		} else if t.consume("<=") {
+			n.updateNode(ndEsm, n, t.add())
+		} else if t.consume(">") {
+			n.updateNode(ndBig, n, t.add())
+		} else if t.consume(">=") {
+			n.updateNode(ndEbg, n, t.add())
+		} else {
+			return n
+		}
 	}
 }
 
-func (l *Label) nextWhile() {
-	if l.while_label {
-		l.while_num++
-		l.while_label = false
+func (t *token) add() *node {
+	// fmt.Println(t)
+	var n *node
+	n = t.mul()
+	for {
+		if t.consume("+") {
+			n.updateNode(ndAdd, n, t.mul())
+		} else if t.consume("-") {
+			n.updateNode(ndSub, n, t.mul())
+		} else {
+			return n
+		}
 	}
 }
 
-func (l *Label) nextFor() {
-	if l.for_label {
-		l.for_num++
-		l.for_label = false
+func (t *token) mul() *node {
+	// fmt.Println(t)
+	var n *node
+	n = t.unary()
+	for {
+		if t.consume("*") {
+			n.updateNode(ndMul, n, t.unary())
+		} else if t.consume("/") {
+			n.updateNode(ndDiv, n, t.unary())
+		} else {
+			return n
+		}
 	}
 }
 
-// ラベル管理
-var labels Label
-
-type LVar struct {
-	next   *LVar  // 次の変数
-	name   string // 名前
-	offset int    // PBRからのオフセット
+func (t *token) unary() *node {
+	// fmt.Println(t)
+	if t.consume("+") {
+		return t.primary()
+	}
+	if t.consume("-") {
+		var n *node
+		n = new(node)
+		n.updateNode(ndSub, newNodeNum("0"), t.primary())
+		return n
+	}
+	return t.primary()
 }
 
-// ローカル変数
-var locals *LVar
-
-func InitLocals() {
-	locals = new(LVar)
+func (t *token) primary() *node {
+	// fmt.Println(t)
+	var n *node
+	n = new(node)
+	tk := t.consumeIdent()
+	if tk != nil {
+		n.kind = ndLvar
+		lvar := locals.findVar(tk)
+		if lvar != nil {
+			n.offset = lvar.offset
+		} else {
+			lvar = new(variance)
+			lvar.next = locals
+			lvar.name = tk.str
+			lvar.offset = locals.offset + 8
+			n.offset = lvar.offset
+			locals = lvar
+		}
+		return n
+	}
+	if t.consumeNone() {
+		n = newNodeNone()
+		return n
+	}
+	return newNodeNum(t.expectNumber())
 }
 
-func GetLocalSpace() int {
-	return locals.offset
+type variance struct {
+	next   *variance
+	name   string
+	offset int
 }
 
-func find_lbar(tok *Token) *LVar {
-	for v := locals; v != nil; v = v.next {
-		if v.name == tok.str {
-			return v
+func (v *variance) init() {
+	v = new(variance)
+}
+
+func (v *variance) getSpace() int {
+	return v.offset
+}
+
+func (v *variance) findVar(t *token) *variance {
+	for va := v; va != nil; va = va.next {
+		if va.name == t.str {
+			return va
 		}
 	}
 	return nil
+}
+
+type label struct {
+	ifLabel    bool
+	elseLabel  bool
+	whileLabel bool
+	forLabel   bool
+	ifNum      int
+	elseNum    int
+	whileNum   int
+	forNum     int
+}
+
+func (l *label) getIf() string {
+	if l.ifLabel {
+		l.ifLabel = true
+		return fmt.Sprintf(".Lif%02d", l.ifNum)
+	}
+	return ""
+}
+
+func (l *label) getElse() string {
+	if l.elseLabel {
+		l.elseLabel = true
+		return fmt.Sprintf(".Lelse%02d", l.elseNum)
+	}
+	return ""
+}
+
+func (l *label) getWhile() string {
+	if l.whileLabel {
+		l.whileLabel = true
+		return fmt.Sprintf(".Lwhile%02d", l.whileNum)
+	}
+	return ""
+}
+
+func (l *label) getFor() string {
+	if l.forLabel {
+		l.forLabel = true
+		return fmt.Sprintf(".Lfor%02d", l.forNum)
+	}
+	return ""
+}
+
+func (l *label) nextIf() {
+	if l.ifLabel {
+		l.ifNum++
+		l.ifLabel = false
+	}
+}
+
+func (l *label) nextElse() {
+	if l.elseLabel {
+		l.elseNum++
+		l.elseLabel = false
+	}
+}
+
+func (l *label) nextWhile() {
+	if l.whileLabel {
+		l.whileNum++
+		l.whileLabel = false
+	}
+}
+
+func (l *label) nextFor() {
+	if l.forLabel {
+		l.forNum++
+		l.forLabel = false
+	}
 }
 
 // ノード種類変数
-type NodeKind int
+type nodeKind int
 
-// 抽象木のノード種類
+// 抽象木のノードの種類
 const (
-	ND_ADD    NodeKind = iota // +
-	ND_SUB                    // -
-	ND_MUL                    // *
-	ND_DIV                    // /
-	ND_NUM                    // 整数
-	ND_EQU                    // ==
-	ND_NEQ                    // !=
-	ND_BIG                    // >
-	ND_SML                    // <
-	ND_EBG                    // >=
-	ND_ESM                    // <=
-	ND_ASSIGN                 // =
-	ND_LVAR                   // ローカル変数
-	ND_RETURN                 // return
-	ND_IF                     // if
-	ND_ELSE                   // else
-	ND_WHILE                  // while
-	ND_FOR                    // for
-	ND_BLOCK                  // block
-	ND_FUNC                   // 関数
-	ND_ARG                    // 引数
-	ND_NONE                   // none
+	ndAdd    nodeKind = iota // +
+	ndSub                    // -
+	ndMul                    // *
+	ndDiv                    // /
+	ndNum                    // number
+	ndEqu                    // ==
+	ndNeq                    // !=
+	ndBig                    // >
+	ndSml                    // <
+	ndEbg                    // >=
+	ndEsm                    // <=
+	ndAssign                 // =
+	ndLvar                   // local var
+	ndRtn                    // return
+	ndIf                     // if
+	ndElse                   // else
+	ndWhile                  // while
+	ndFor                    // for
+	ndBlk                    // block
+	ndFunc                   // function
+	ndArg                    // arg
+	ndNone                   // none
 )
 
-// 抽象木の型
-type Node struct {
-	kind   NodeKind // ノードの方
-	lhs    *Node    // 左辺
-	rhs    *Node    // 右辺
-	val    string   // せいすうち
-	offset int      // ローカル変数のオフセット
-	label  string   // ラベル保持
+type node struct {
+	kind   nodeKind // ノードの方
+	lhs    *node    // 左辺
+	rhs    *node    // 右辺
+	val    string   // 値
+	offset int      // オフセット
+	label  string   // ラベル
 }
 
-// 新しいノードの生成
-func new_node(kind NodeKind, lhs *Node, rhs *Node) *Node {
-	var node *Node
-	node = new(Node)
-	node.kind = kind
-	node.lhs = lhs
-	node.rhs = rhs
-	return node
+// ノードの更新
+func (n *node) updateNode(kind nodeKind, lhs *node, rhs *node) {
+	var newNode *node
+	newNode = new(node)
+	newNode.kind = kind
+	newNode.lhs = lhs
+	newNode.rhs = rhs
+	n = newNode
 }
 
-// せいすうよう
-func new_node_num(val string) *Node {
-	var node *Node
-	node = new(Node)
-	node.kind = ND_NUM
-	node.val = val
-	return node
+func newNodeNum(val string) *node {
+	var n *node
+	n = new(node)
+	n.kind = ndNum
+	n.val = val
+	return n
 }
 
-func new_node_none() *Node {
-	var node *Node
-	node = new(Node)
-	node.kind = ND_NONE
-	return node
+func newNodeNone() *node {
+	var n *node
+	n = new(node)
+	n.kind = ndNone
+	return n
 }
 
-// ローカル変数よう
-func new_node_local_variance() *Node {
-	var node *Node
-	node = new(Node)
-	node.kind = ND_LVAR
-	return node
-}
-
-func Program() []*Node {
-	var node []*Node
-	for !at_eof() {
-		node = append(node, stmt())
-	}
-	return node
-}
-
-func stmt() *Node {
-	var node *Node
-	if consume("{") {
-		if consume("}") {
-			return nil
-		}
-		fmt.Println("1start stmt")
-		fmt.Println(token)
-		node = stmt()
-		fmt.Println("1finish stmt")
-		fmt.Println(token)
-		for !consume("}") {
-			fmt.Println("2start stmt")
-			fmt.Println(token)
-			node = new_node(ND_BLOCK, node, stmt())
-			fmt.Println("2finish stmt")
-			// expect("}")
-		}
-		return node
-	} else if consume("return") {
-		node = new(Node)
-		node.kind = ND_RETURN
-		node.lhs = expr()
-		fmt.Println(" -> 1;")
-		expect(";")
-		return node
-	} else if consume("if") {
-		expect("(")
-		node = new(Node)
-		labels.nextIf()
-		node.label = labels.getIf()
-		node.kind = ND_IF
-		node.lhs = expr()
-		expect(")")
-		node.rhs = stmt()
-		if consume("else") {
-			node = new_node(ND_ELSE, node, stmt())
-			labels.nextElse()
-			node.label = labels.getElse()
-		}
-		return node
-	} else if consume("while") {
-		expect("(")
-		node = new(Node)
-		node.kind = ND_WHILE
-		labels.nextWhile()
-		node.label = labels.getWhile()
-		node.lhs = expr()
-		expect(")")
-		node.rhs = stmt()
-		return node
-	} else if consume("for") {
-		expect("(")
-		node = new(Node)
-		node.kind = ND_FOR
-		labels.nextFor()
-		node.label = labels.getFor()
-		node.lhs = new(Node)
-		node.rhs = new(Node)
-		fmt.Println(" -> 2;")
-		if !consume(";") {
-			node.lhs.lhs = expr()
-			fmt.Println(" -> 3;")
-			expect(";")
-		} else {
-			node.lhs.lhs = new_node_none()
-		}
-		fmt.Println(" -> 4;")
-		if !consume(";") {
-			node.lhs.rhs = expr()
-			fmt.Println(" -> 5;")
-			expect(";")
-		} else {
-			node.lhs.rhs = new_node_none()
-		}
-		if !consume(")") {
-			node.rhs.lhs = expr()
-			expect(")")
-		} else {
-			node.rhs.lhs = new_node_none()
-		}
-		node.rhs.rhs = stmt()
-		return node
-	} else {
-		node = expr()
-		fmt.Println(" -> 6;")
-		expect(";")
-	}
-	return node
-}
-
-// 式のノード生成
-func expr() *Node {
-	return assign()
-}
-
-func assign() *Node {
-	var node *Node
-	node = equality()
-	if consume("=") {
-		node = new_node(ND_ASSIGN, node, assign())
-	}
-	return node
-}
-
-// 等式のノード生成
-func equality() *Node {
-	var node *Node
-	node = relational()
-	for {
-		if consume("==") {
-			node = new_node(ND_EQU, node, relational())
-		} else if consume("!=") {
-			node = new_node(ND_NEQ, node, relational())
-		} else {
-			return node
-		}
-	}
-}
-
-// 大小関係のノード生成
-func relational() *Node {
-	var node *Node
-	node = add()
-	for {
-		if consume("<") {
-			node = new_node(ND_SML, node, add())
-		} else if consume("<=") {
-			node = new_node(ND_ESM, node, add())
-		} else if consume(">") {
-			node = new_node(ND_BIG, node, add())
-		} else if consume(">=") {
-			node = new_node(ND_EBG, node, add())
-		} else {
-			return node
-		}
-	}
-}
-
-// 加算減算のノード生成
-func add() *Node {
-	var node *Node
-	node = mul()
-	for {
-		if consume("+") {
-			node = new_node(ND_ADD, node, mul())
-		} else if consume("-") {
-			node = new_node(ND_SUB, node, mul())
-		} else {
-			return node
-		}
-	}
-}
-
-// 乗算除算のノード生成
-func mul() *Node {
-	var node *Node
-	node = unary()
-	for {
-		if consume("*") {
-			node = new_node(ND_MUL, node, unary())
-		} else if consume("/") {
-			node = new_node(ND_DIV, node, unary())
-		} else {
-			return node
-		}
-	}
-}
-
-// 単行+/-のノード生成
-func unary() *Node {
-	if consume("+") {
-		return primary()
-	}
-	if consume("-") {
-		return new_node(ND_SUB, new_node_num("0"), primary())
-	}
-	return primary()
-}
-
-// 値等のプライマーのノード生成
-func primary() *Node {
-	// ()について
-	if consume("(") {
-		var node *Node
-		node = expr()
-		expect(")")
-		return node
-	}
-
-	tok := consume_ident()
-	var node *Node
-	node = new(Node)
-	if tok != nil {
-		// 関数
-		if consume("(") {
-			node.kind = ND_FUNC
-			node.val = tok.str
-			// fmt.Println(node)
-			// if !consume(")") {
-			// 	argNode := expr()
-			// 	argNode.kind = ND_ARG
-			// 	argCount = 1
-			// 	if consume(",") {
-			// 		argNode = new_node(ND_ARG, argNode, expr())
-			// 		argCount++
-			// 	} else {
-			// 		expect(")")
-			// 		node.lhs = argNode
-			// 		node.offset = argCount
-			// 	}
-			// } else {
-			// 	node.lhs = new_node_none()
-			// 	node.offset = 1
-			// }
-			// fmt.Println("1111111111111111111111111")
-			// fmt.Println(node)
-			// fmt.Println("1111111111111111111111111")
-			// node.rhs = stmt()
-			// fmt.Println(ND_FUNC)
-			// fmt.Println(node.kind)
-			expect(")")
-			// fmt.Println("gooo")
-			fmt.Println("go func stmt")
-			node.rhs = stmt()
-			return node
-		}
-		node.kind = ND_LVAR
-
-		lvar := find_lbar(tok)
-		if lvar != nil {
-			node.offset = lvar.offset
-		} else {
-			var lvar *LVar
-			lvar = new(LVar)
-			lvar.next = locals
-			lvar.name = tok.str
-			lvar.offset = locals.offset + 8
-			node.offset = lvar.offset
-			locals = lvar
-		}
-		return node
-	}
-
-	if consume_none() {
-		var node *Node
-		node = new(Node)
-		node.kind = ND_NONE
-		return node
-	}
-
-	// 数値出す
-	return new_node_num(expect_number())
+func newLocalVariance() *node {
+	var n *node
+	n = new(node)
+	n.kind = ndLvar
+	return n
 }
 
 // トークンの種類用変数
-type TokenKind int
+type tokenKind int
 
-// 種類の定数
+// 種類の定位数
 const (
-	TK_RESERVED TokenKind = iota // 予約時
-	TK_IDENT                     // 識別子
-	TK_NUM                       // 整数血
-	TK_EOF                       // 入力終了用
+	tkReserve tokenKind = iota // 予約時
+	tkIdent                    // 識別子
+	tkNum                      // 整数値
+	tkEOF                      // 入力終了用
 )
 
 // 現状のトークン
-type Token struct {
-	kind TokenKind // トークンの種類
-	next *Token    // 次のトークン
-	val  string    // 値
-	str  string    // 文字
+type token struct {
+	kind tokenKind // トークンの種類
+	next *token    // 次のトークン
+	str  string    // 値
 }
 
-// 現状のトークン
-var token *Token
-
-// 入力プログラム
-var user_input string
-
-// 次のトークンが予約されているものか確認
-func consume(op string) bool {
-	if token.kind != TK_RESERVED || token.str != op {
+// 次のトークン消費
+func (t *token) consume(op string) bool {
+	if t.kind != tkReserve || t.str != op {
 		return false
 	}
-	token = token.next
+	fmt.Println("-  consume  - " + op)
+	fmt.Println(t)
+	t = t.next
+	fmt.Println(t)
 	return true
 }
 
-// 変数？
-func consume_ident() *Token {
-	if token.kind == TK_IDENT {
-		var tok *Token
-		tok = token
-		token = token.next
-		return tok
+// 変数消費
+func (t *token) consumeIdent() *token {
+	if t.kind != tkIdent {
+		return nil
 	}
-	return nil
+	var tmp *token
+	tmp = t
+	t = t.next
+	return tmp
 }
 
-func consume_none() bool {
-	if token != nil {
+func (t *token) consumeNone() bool {
+	if t != nil {
 		return false
 	}
-	token = token.next
+	t = t.next
 	return true
 }
 
-// 演算子確認
-func expect(op string) {
-	if token.kind != TK_RESERVED || string(token.str[0]) != op {
-		Error(op + "ではありません")
+// 確認
+func (t *token) expect(op string) {
+	if t.kind != tkReserve || t.str != op {
+		error(op + "ではありません")
 	}
-	token = token.next
+	t = t.next
 }
 
-// 数値確認
-func expect_number() string {
-	if token.kind != TK_NUM {
-		Error("数値ではありません")
+func (t *token) expectNumber() string {
+	if t.kind != tkNum {
+		error("数値ではありません")
 		return ""
 	}
-	val := token.val
-	token = token.next
+	val := t.str
+	t = t.next
 	return val
 }
 
-// EOF確認
-func at_eof() bool {
-	return token.kind == TK_EOF
+func (t *token) atEOF() bool {
+	return t.kind == tkEOF
 }
 
-// トークン作成とつなげる
-func new_token(kind TokenKind, cur *Token, str string) *Token {
-	var tok *Token
-	tok = new(Token)
-	tok.kind = kind
-	tok.str = str
-	tok.next = nil
-	cur.next = tok
-	return tok
-}
-
-// もじれつpをトーク内図
-func tokenize(str string) *Token {
-	var head Token
+// とーくないずする
+func tokenize(str string) *token {
+	var head token
 	head.next = nil
 	cur := &head
-	user_input = str
-	now_loc = 0
-	for len(str) > 0 {
+
+	var s sentence
+	s.init(str)
+
+	for s.isValid() {
 		// 空白飛ばし
-		if str[0] == ' ' {
-			str = str[1:]
-			now_loc += 1
-			continue
-		}
+		s.deleteSpace()
 
 		// return文
-		if check_key_word("return", str) {
-			cur = new_token(TK_RESERVED, cur, "return")
-			str = str[6:]
-			now_loc += 6
+		if s.checkKeyword("return") {
+			cur = s.createReserveToken(cur, "return")
 			continue
 		}
 
 		// if文
-		if check_key_word("if", str) {
-			cur = new_token(TK_RESERVED, cur, "if")
-			str = str[2:]
-			now_loc += 2
+		if s.checkKeyword("if") {
+			cur = s.createReserveToken(cur, "if")
 			continue
 		}
 
 		// else文
-		if check_key_word("else", str) {
-			cur = new_token(TK_RESERVED, cur, "else")
-			str = str[4:]
-			now_loc += 4
+		if s.checkKeyword("else") {
+			cur = s.createReserveToken(cur, "else")
 			continue
 		}
 
 		// while文
-		if check_key_word("while", str) {
-			cur = new_token(TK_RESERVED, cur, "while")
-			str = str[5:]
-			now_loc += 5
+		if s.checkKeyword("while") {
+			cur = s.createReserveToken(cur, "while")
 			continue
 		}
 
 		// for文
-		if check_key_word("for", str) {
-			cur = new_token(TK_RESERVED, cur, "for")
-			str = str[3:]
-			now_loc += 3
+		if s.checkKeyword("for") {
+			cur = s.createReserveToken(cur, "for")
 			continue
 		}
 
 		// == / <= / >= 演算子
-		if len(str) >= 2 && (str[:2] == "==" || str[:2] == "!=" || str[:2] == "<=" || str[:2] == ">=") {
-			cur = new_token(TK_RESERVED, cur, str[:2])
-			str = str[2:]
-			now_loc += 2
+		if s.checkKeyword("==") || s.checkKeyword("<=") || s.checkKeyword(">=") {
+			cur = s.createReserveToken(cur, s.nowString[:2])
 			continue
 		}
 
-		// + / - / */ / / () / < / > 演算子
-		if str[0] == '+' || str[0] == '-' || str[0] == '*' || str[0] == '/' || str[0] == '(' || str[0] == ')' || str[0] == '>' || str[0] == '<' || str[0] == ';' || str[0] == '=' || str[0] == '{' || str[0] == '}' || str[0] == ',' {
-			cur = new_token(TK_RESERVED, cur, string(str[0]))
-			str = str[1:]
-			now_loc += 1
+		// + / - / * / / / ( / ) / < / > 演算子
+		if s.checkKeyword("+") || s.checkKeyword("-") || s.checkKeyword("*") || s.checkKeyword("/") || s.checkKeyword("(") || s.checkKeyword(")") || s.checkKeyword(">") || s.checkKeyword("<") || s.checkKeyword(";") || s.checkKeyword("=") || s.checkKeyword("{") || s.checkKeyword("}") || s.checkKeyword(",") {
+			cur = s.createReserveToken(cur, string(s.nowString[0]))
 			continue
 		}
 
 		// 数値処理
-		if '0' <= str[0] && str[0] <= '9' {
-			cur = new_token(TK_NUM, cur, "")
-			cur.val, str = get_number_string(str)
+		if s.checkNumber() {
+			cur = s.createNumberToken(cur)
 			continue
 		}
 
-		// ローカル変数
-		if check_alphabet(str[0]) {
-			name := ""
-			for len(str) > 0 {
-				if check_alphabet(str[0]) {
-					name += string(str[0])
-					str = str[1:]
-				} else {
-					break
-				}
-			}
-			cur = new_token(TK_IDENT, cur, name)
-			now_loc += len(name)
+		// 変数
+		if s.checkAlphabet() {
+			cur = s.createIdentToken(cur)
 			continue
 		}
 
-		Error("トークナイズできません")
+		error("トークナイズできません")
 	}
-	new_token(TK_EOF, cur, str)
+
+	// EOF
+	cur = s.createEOFToken(cur)
+
 	return head.next
 }
 
-// アルファベット化確認
-func check_alphabet(c uint8) bool {
-	if 'a' <= c && c <= 'z' || 'A' <= c && c <= 'Z' {
+// 文関係
+type sentence struct {
+	original  string // 元の
+	nowString string // 今の読み込み
+}
+
+// 初期化
+func (s *sentence) init(str string) {
+	s.original = str
+	s.nowString = str
+}
+
+// 余白飛ばし
+func (s *sentence) deleteSpace() {
+	for s.checkKeyword(" ") {
+		s.nowString = s.nowString[1:]
+	}
+}
+
+// キーワード確認
+func (s *sentence) checkKeyword(keyword string) bool {
+	if len(keyword) == len(s.nowString) {
+		return keyword == s.nowString
+	} else if len(s.nowString) > len(keyword) {
+		return s.nowString[0:len(keyword)] == keyword
+	}
+	return false
+}
+
+// 数値確認
+func (s *sentence) checkNumber() bool {
+	if len(s.nowString) > 0 && '0' <= s.nowString[0] && s.nowString[0] <= '9' {
 		return true
 	}
 	return false
 }
 
-// 数か確認
-func check_num(c uint8) bool {
-	if '0' <= c && c <= '9' {
-		return true
-	}
-	return false
-}
-
-// アンダースコア確認
-func check_under_score(c uint8) bool {
-	if '_' == c {
-		return true
-	}
-	return false
-}
-
-func check_key_word(key string, str string) bool {
-	if len(str) == len(key) {
-		return str == key
-	} else if len(str) < len(key) {
+// アルファベット確認
+func (s *sentence) checkAlphabet() bool {
+	if len(s.nowString) <= 0 {
 		return false
-	} else if check_alphabet(str[len(key)]) || check_num(str[len(key)]) || check_under_score(str[len(key)]) {
-		return false
-	} else {
-		return str[0:len(key)] == key
+	} else if ('a' <= s.nowString[0] && s.nowString[0] <= 'z') || ('A' <= s.nowString[0] && s.nowString[0] <= 'Z') {
+		return true
 	}
+	return false
 }
 
-// 文字列からfloat64を取得して、読み取ったものを飛ばして返すもの
-func get_number_string(data string) (string, string) {
-	result := ""
+// トークン作成
+// 予約碁盤
+func (s *sentence) createReserveToken(cur *token, keyword string) *token {
+	var t *token
+	t = new(token)
+	t.kind = tkReserve
+	t.str = keyword
+	t.next = nil
+	cur.next = t
+	s.nowString = s.nowString[len(keyword):]
+	return t
+}
+
+// 数値版
+func (s *sentence) createNumberToken(cur *token) *token {
+	var t *token
+	t = new(token)
+	t.kind = tkNum
+	t.str = ""
 	for {
-		if len(data) != 0 && '0' <= data[0] && data[0] <= '9' {
-			result += string(data[0])
-			data = data[1:]
-			now_loc += 1
+		if s.checkNumber() {
+			t.str += string(s.nowString[0])
+			s.nowString = s.nowString[1:]
 		} else {
 			break
 		}
 	}
-	return result, data
+	t.next = nil
+	cur.next = t
+	return t
+}
+
+// 変数版
+func (s *sentence) createIdentToken(cur *token) *token {
+	var t *token
+	t = new(token)
+	t.kind = tkIdent
+	t.str = ""
+	for len(s.nowString) > 0 {
+		if s.checkAlphabet() {
+			t.str += string(s.nowString[0])
+			s.nowString = s.nowString[1:]
+		} else {
+			break
+		}
+	}
+	t.next = nil
+	cur.next = t
+	return t
+}
+
+// EOF版
+func (s *sentence) createEOFToken(cur *token) *token {
+	var t *token
+	t = new(token)
+	t.kind = tkEOF
+	t.next = nil
+	cur.next = t
+	return t
+}
+
+// 生存確認
+func (s *sentence) isValid() bool {
+	return len(s.nowString) > 0
 }

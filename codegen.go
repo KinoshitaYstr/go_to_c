@@ -1,163 +1,140 @@
-// コードジェネレータ
-
 package main
 
-import (
-	"fmt"
-)
+import "fmt"
 
-// ノードからアセンブリ生成
-func Gen(node *Node) {
-	switch node.kind {
-	case ND_NONE:
+func (n *node) gen() {
+	switch n.kind {
+	case ndNone:
 		return
-	case ND_NUM:
-		fmt.Println("  push " + node.val)
+	case ndNum:
+		fmt.Println("  push " + n.val)
 		return
-	case ND_LVAR:
-		gen_lvar(node)
+	case ndLvar:
+		n.genVariance()
 		fmt.Println("  pop rax")
 		fmt.Println("  mov rax, [rax]")
 		fmt.Println("  push rax")
 		return
-	case ND_ASSIGN:
-		gen_lvar(node.lhs)
-		Gen(node.rhs)
+	case ndAssign:
+		n.genVariance()
+		n.rhs.gen()
 
 		fmt.Println("  pop rdi")
 		fmt.Println("  pop rax")
 		fmt.Println("  mov [rax], rdi")
 		fmt.Println("  push rdi")
 		return
-	case ND_RETURN:
-		Gen(node.lhs)
+	case ndRtn:
+		n.lhs.gen()
 
 		fmt.Println("  pop rax")
 		fmt.Println("  mov rsp, rbp")
 		fmt.Println("  pop rbp")
 		fmt.Println("  ret")
 		return
-	case ND_IF:
-		Gen(node.lhs)
-		fmt.Println("  pop rax")
-		fmt.Println("  cmp rax, 0")
-		fmt.Println("  je " + node.label)
-		Gen(node.rhs)
-		fmt.Println(node.label + ":")
-		return
-	case ND_ELSE:
-		Gen(node.lhs.lhs)
-		fmt.Println("  pop rax")
-		fmt.Println("  cmp rax, 0")
-		fmt.Println("  je " + node.label)
-		Gen(node.lhs.rhs)
-		fmt.Println("  jmp " + node.lhs.label)
-		fmt.Println(node.label + ":")
-		Gen(node.rhs)
-		fmt.Println(node.lhs.label + ":")
-		return
-	case ND_WHILE:
-		fmt.Println(node.label + "begin:")
-		Gen(node.lhs)
-		fmt.Println("  pop rax")
-		fmt.Println("  cmp rax, 0")
-		fmt.Println("  je " + node.label + "end")
-		Gen(node.rhs)
-		fmt.Println("  jmp " + node.label + "begin")
-		fmt.Println(node.label + "end:")
+	case ndIf:
+		n.lhs.gen()
 
+		fmt.Println("  pop rax")
+		fmt.Println("  cmp rax, 0")
+		fmt.Println("  je " + n.label)
+		n.rhs.gen()
+		fmt.Println(n.label + ":")
 		return
-	case ND_FOR:
-		Gen(node.lhs.lhs)
-		fmt.Println(node.label + "begin:")
-		Gen(node.lhs.rhs)
-		if node.lhs.rhs.kind != ND_NONE {
+	case ndElse:
+		n.lhs.lhs.gen()
+		fmt.Println("  pop rax")
+		fmt.Println("  cmp rax, 0")
+		fmt.Println("  je " + n.label)
+		n.lhs.rhs.gen()
+		fmt.Println("  jmp " + n.lhs.label)
+		fmt.Println(n.label + ":")
+		n.rhs.gen()
+		fmt.Println(n.lhs.label + ":")
+		return
+	case ndWhile:
+		fmt.Println(n.label + "begin:")
+		n.lhs.gen()
+		fmt.Println("  pop rax")
+		fmt.Println("  cmp rax, 0")
+		fmt.Println("  je " + n.label + "end")
+		n.rhs.gen()
+		fmt.Println("  jmp " + n.label + "begin")
+		fmt.Println(n.label + "end:")
+		return
+	case ndFor:
+		n.lhs.lhs.gen()
+		fmt.Println(n.label + "begin:")
+		n.lhs.rhs.gen()
+		if n.lhs.rhs.kind != ndNone {
 			fmt.Println("  pop rax")
 			fmt.Println("  cmp rax, 0")
-			fmt.Println("  je " + node.label + "end")
+			fmt.Println("  je" + n.label + "end")
 		}
-		Gen(node.rhs.lhs)
-		Gen(node.rhs.rhs)
-		fmt.Println("  jmp " + node.label + "begin")
-		fmt.Println(node.label + "end:")
+		n.rhs.lhs.gen()
+		n.rhs.rhs.gen()
+		fmt.Println("  jmp " + n.label + "begin")
+		fmt.Println(n.label + "end:")
 		return
-	case ND_BLOCK:
-		Gen(node.lhs)
-		Gen(node.rhs)
+	case ndBlk:
+		n.lhs.gen()
+		n.rhs.gen()
 		return
-	case ND_FUNC:
-		fmt.Println("=====================")
-		if node.lhs != nil {
-			Gen(node.lhs)
-		}
-		fmt.Println(node.val + ":")
-
-		fmt.Println("  nop")
-		fmt.Println("  leave")
-		fmt.Println("  ret")
+	case ndFunc:
 		return
-	case ND_ARG:
-		if node.lhs != nil {
-			Gen(node.lhs)
-		}
-		if node.rhs != nil {
-			Gen(node.rhs)
-		}
-		fmt.Println(node)
+	case ndArg:
 		return
 	}
 
-	Gen(node.lhs)
-	Gen(node.rhs)
+	n.lhs.gen()
+	n.rhs.gen()
 
 	fmt.Println("  pop rdi")
 	fmt.Println("  pop rax")
 
-	switch node.kind {
-	case ND_ADD:
+	switch n.kind {
+	case ndAdd:
 		fmt.Println("  add rax, rdi")
-	case ND_SUB:
+	case ndSub:
 		fmt.Println("  sub rax, rdi")
-	case ND_MUL:
+	case ndMul:
 		fmt.Println("  imul rax, rdi")
-	case ND_DIV:
+	case ndDiv:
 		fmt.Println("  cqo")
 		fmt.Println("  idiv rdi")
-	case ND_EQU:
+	case ndEqu:
 		fmt.Println("  cmp rax, rdi")
 		fmt.Println("  sete al")
 		fmt.Println("  movzb rax, al")
-	case ND_NEQ:
+	case ndNeq:
 		fmt.Println("  cmp rax, rdi")
 		fmt.Println("  setne al")
 		fmt.Println("  movzb rax, al")
-	case ND_SML:
+	case ndSml:
 		fmt.Println("  cmp rax, rdi")
 		fmt.Println("  setl al")
 		fmt.Println("  movzb rax, al")
-	case ND_ESM:
+	case ndEsm:
 		fmt.Println("  cmp rax, rdi")
 		fmt.Println("  setle al")
 		fmt.Println("  movzb rax, al")
-	case ND_BIG:
+	case ndBig:
 		fmt.Println("  cmp rdi, rax")
 		fmt.Println("  setl al")
 		fmt.Println("  movzb rax, al")
-	case ND_EBG:
+	case ndEbg:
 		fmt.Println("  cmp rdi, rax")
 		fmt.Println("  setle al")
 		fmt.Println("  movzb rax, al")
 	}
-
 	fmt.Println("  push rax")
 }
 
-// 左辺値用
-func gen_lvar(node *Node) {
-	if node.kind != ND_LVAR {
-		Error("代入の左辺値が変数ではありません")
+func (n *node) genVariance() {
+	if n.kind != ndLvar {
+		error("代入の左辺地が変数ではありません")
 	}
 	fmt.Println("  mov rax, rbp")
-	fmt.Println("  sub rax,", node.offset)
+	fmt.Println("  sub rax, ", n.offset)
 	fmt.Println("  push rax")
 }
