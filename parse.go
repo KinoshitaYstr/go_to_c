@@ -6,15 +6,15 @@ var labels label
 var locals *variance
 
 func (t *token) program() []*node {
-	fmt.Println(t)
-	fmt.Println(t.consume("{"))
-	fmt.Println(t)
+	// fmt.Println(t)
+	// fmt.Println(t.consume("{"))
+	// fmt.Println(t)
 	var n []*node
 	locals.init()
-	// fmt.Println(t.stmt())
-	// for t.atEOF() {
-	// 	n = append(n, t.stmt())
-	// }
+	fmt.Println(t.stmt())
+	for t.atEOF() {
+		n = append(n, t.stmt())
+	}
 	fmt.Println(n)
 	return n
 }
@@ -22,77 +22,81 @@ func (t *token) program() []*node {
 func (t *token) stmt() *node {
 	// fmt.Println(t)
 	var n *node
-	if t.consume("{") {
-		if t.consume("}") {
+	var errFlag bool
+
+	if t, errFlag = t.consume("{"); errFlag {
+		t, errFlag = t.consume("}")
+		if errFlag {
 			return newNodeNone()
 		}
 		n = t.stmt()
-		for !t.consume("}") {
+		t, errFlag = t.consume("}")
+		for !errFlag {
 			n.updateNode(ndBlk, n, t.stmt())
 		}
 		return n
-	} else if t.consume("return") {
+	} else if t, errFlag = t.consume("return"); errFlag {
 		n = new(node)
 		n.kind = ndRtn
 		n.lhs = t.expr()
-		t.expect(";")
+		t = t.expect(";")
 		return n
-	} else if t.consume("if") {
-		t.expect("(")
+	} else if t, errFlag = t.consume("if"); errFlag {
+		t = t.expect("(")
 		labels.nextIf()
 		n = new(node)
 		n.kind = ndIf
 		n.label = labels.getIf()
 		n.lhs = t.expr()
-		t.expect(")")
+		t = t.expect(")")
 		n.rhs = t.stmt()
-		if t.consume("else") {
+		if t, errFlag = t.consume("else"); errFlag {
 			labels.nextElse()
 			n.updateNode(ndElse, n, t.stmt())
 			n.label = labels.getElse()
 		}
 		return n
-	} else if t.consume("while") {
-		t.expect("(")
+	} else if t, errFlag = t.consume("while"); errFlag {
+		t = t.expect("(")
 		labels.nextWhile()
 		n = new(node)
 		n.kind = ndWhile
 		n.label = labels.getWhile()
 		n.lhs = t.expr()
-		t.expect(")")
+		t = t.expect(")")
 		n.rhs = t.stmt()
 		return n
-	} else if t.consume("for") {
-		t.expect("(")
+	} else if t, errFlag = t.consume("for"); errFlag {
+		t = t.expect("(")
 		labels.nextFor()
 		n = new(node)
 		n.kind = ndFor
 		n.label = labels.getFor()
 		n.lhs = new(node)
 		n.rhs = new(node)
-		if t.consume(";") {
+		if t, errFlag = t.consume(";"); errFlag {
 			n.lhs.lhs = newNodeNone()
 		} else {
 			n.lhs.lhs = t.expr()
-			t.expect(";")
+			t = t.expect(";")
 		}
-		if t.consume(";") {
+		if t, errFlag = t.consume(";"); errFlag {
 			n.lhs.rhs = newNodeNone()
 		} else {
 			n.lhs.rhs = t.expr()
-			t.expect(";")
+			t = t.expect(";")
 		}
-		if t.consume(")") {
+		if t, errFlag = t.consume(")"); errFlag {
 			n.rhs.lhs = newNodeNone()
 		} else {
 			n.rhs.lhs = t.expr()
-			t.expect(")")
+			t = t.expect(")")
 		}
 		n.rhs.rhs = t.stmt()
 		return n
 	} else {
 		n = t.expr()
-		t.expect(";")
+		t = t.expect(";")
 		return n
 	}
 }
@@ -105,8 +109,9 @@ func (t *token) expr() *node {
 func (t *token) assign() *node {
 	// fmt.Println(t)
 	var n *node
+	var errFlag bool
 	n = t.equality()
-	if t.consume("=") {
+	if t, errFlag = t.consume("="); errFlag {
 		n.updateNode(ndAssign, n, t.assign())
 	}
 	return n
@@ -115,11 +120,12 @@ func (t *token) assign() *node {
 func (t *token) equality() *node {
 	// fmt.Println(t)
 	var n *node
+	var errFlag bool
 	n = t.relational()
 	for {
-		if t.consume("==") {
+		if t, errFlag = t.consume("=="); errFlag {
 			n.updateNode(ndEqu, n, t.relational())
-		} else if t.consume("!=") {
+		} else if t, errFlag = t.consume("!="); errFlag {
 			n.updateNode(ndNeq, n, t.relational())
 		} else {
 			return n
@@ -130,15 +136,16 @@ func (t *token) equality() *node {
 func (t *token) relational() *node {
 	// fmt.Println(t)
 	var n *node
+	var errFlag bool
 	n = t.add()
 	for {
-		if t.consume("<") {
+		if t, errFlag = t.consume("<"); errFlag {
 			n.updateNode(ndSml, n, t.add())
-		} else if t.consume("<=") {
+		} else if t, errFlag = t.consume("<="); errFlag {
 			n.updateNode(ndEsm, n, t.add())
-		} else if t.consume(">") {
+		} else if t, errFlag = t.consume(">"); errFlag {
 			n.updateNode(ndBig, n, t.add())
-		} else if t.consume(">=") {
+		} else if t, errFlag = t.consume(">="); errFlag {
 			n.updateNode(ndEbg, n, t.add())
 		} else {
 			return n
@@ -149,11 +156,12 @@ func (t *token) relational() *node {
 func (t *token) add() *node {
 	// fmt.Println(t)
 	var n *node
+	var errFlag bool
 	n = t.mul()
 	for {
-		if t.consume("+") {
+		if t, errFlag = t.consume("+"); errFlag {
 			n.updateNode(ndAdd, n, t.mul())
-		} else if t.consume("-") {
+		} else if t, errFlag = t.consume("-"); errFlag {
 			n.updateNode(ndSub, n, t.mul())
 		} else {
 			return n
@@ -164,11 +172,12 @@ func (t *token) add() *node {
 func (t *token) mul() *node {
 	// fmt.Println(t)
 	var n *node
+	var errFlag bool
 	n = t.unary()
 	for {
-		if t.consume("*") {
+		if t, errFlag = t.consume("*"); errFlag {
 			n.updateNode(ndMul, n, t.unary())
-		} else if t.consume("/") {
+		} else if t, errFlag = t.consume("/"); errFlag {
 			n.updateNode(ndDiv, n, t.unary())
 		} else {
 			return n
@@ -178,10 +187,11 @@ func (t *token) mul() *node {
 
 func (t *token) unary() *node {
 	// fmt.Println(t)
-	if t.consume("+") {
+	var errFlag bool
+	if t, errFlag = t.consume("+"); errFlag {
 		return t.primary()
 	}
-	if t.consume("-") {
+	if t, errFlag = t.consume("-"); errFlag {
 		var n *node
 		n = new(node)
 		n.updateNode(ndSub, newNodeNum("0"), t.primary())
@@ -193,9 +203,11 @@ func (t *token) unary() *node {
 func (t *token) primary() *node {
 	// fmt.Println(t)
 	var n *node
+	var errFlag bool
+	var tk *token
 	n = new(node)
-	tk := t.consumeIdent()
-	if tk != nil {
+	t, tk, errFlag = t.consumeIdent()
+	if errFlag {
 		n.kind = ndLvar
 		lvar := locals.findVar(tk)
 		if lvar != nil {
@@ -210,11 +222,13 @@ func (t *token) primary() *node {
 		}
 		return n
 	}
-	if t.consumeNone() {
+	if t, errFlag = t.consumeNone(); errFlag {
 		n = newNodeNone()
 		return n
 	}
-	return newNodeNum(t.expectNumber())
+	var str string
+	t, str = t.expectNumber()
+	return newNodeNum(str)
 }
 
 type variance struct {
@@ -225,6 +239,7 @@ type variance struct {
 
 func (v *variance) init() {
 	v = new(variance)
+	v.offset = 0
 }
 
 func (v *variance) getSpace() int {
@@ -400,52 +415,42 @@ type token struct {
 }
 
 // 次のトークン消費
-func (t *token) consume(op string) bool {
+func (t *token) consume(op string) (*token, bool) {
 	if t.kind != tkReserve || t.str != op {
-		return false
+		return t, false
 	}
-	fmt.Println("-  consume  - " + op)
-	fmt.Println(t)
-	t = t.next
-	fmt.Println(t)
-	return true
+	return t.next, true
 }
 
 // 変数消費
-func (t *token) consumeIdent() *token {
+func (t *token) consumeIdent() (*token, *token, bool) {
 	if t.kind != tkIdent {
-		return nil
+		return t, nil, false
 	}
-	var tmp *token
-	tmp = t
-	t = t.next
-	return tmp
+	return t.next, t, true
 }
 
-func (t *token) consumeNone() bool {
+func (t *token) consumeNone() (*token, bool) {
 	if t != nil {
-		return false
+		return t, false
 	}
-	t = t.next
-	return true
+	return t.next, true
 }
 
 // 確認
-func (t *token) expect(op string) {
+func (t *token) expect(op string) *token {
 	if t.kind != tkReserve || t.str != op {
 		error(op + "ではありません")
 	}
-	t = t.next
+	return t.next
 }
 
-func (t *token) expectNumber() string {
+func (t *token) expectNumber() (*token, string) {
 	if t.kind != tkNum {
 		error("数値ではありません")
-		return ""
 	}
 	val := t.str
-	t = t.next
-	return val
+	return t.next, val
 }
 
 func (t *token) atEOF() bool {
